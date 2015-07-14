@@ -126,12 +126,14 @@ program amr2
     character(len=*), parameter :: dbugfile = 'fort.debug'
     character(len=*), parameter :: matfile = 'fort.nplot'
     character(len=*), parameter :: parmfile = 'fort.parameters'
-    character(len=*), parameter :: parmfile = 'sediment.data'
+    character(len=*), parameter :: sedfile = 'sediment.data'
 
+    !****************************************************************
     ! Open parameter and debug files
     open(dbugunit,file=dbugfile,status='unknown',form='formatted')
     open(parmunit,file=parmfile,status='unknown',form='formatted')
-
+    !****************************************************************
+    ! Read parameter for AMRClaw
     maxthreads = 1    !! default, if no openmp
 
     ! Open AMRClaw primary parameter file
@@ -139,6 +141,7 @@ program amr2
 
     ! Number of space dimensions, not really a parameter but we read it in and
     ! check to make sure everyone is on the same page. 
+    ! Space parameter
     read(inunit,"(i1)") ndim  
     if (ndim /= 2) then
         print *,'Error ***   ndim = 2 is required,  ndim = ',ndim
@@ -207,7 +210,6 @@ program amr2
         read(inunit,*) (output_aux_components(i),i=1,naux)
         read(inunit,*) output_aux_onlyonce
     endif
-    ! ==========================================================================
 
     ! ==========================================================================
     !  Algorithm parameters
@@ -311,6 +313,7 @@ program amr2
     endif
 
     close(inunit)
+    !****************************************************************
 
     ! ==========================================================================
     !  Refinement Control
