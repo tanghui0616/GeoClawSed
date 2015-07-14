@@ -126,6 +126,7 @@ program amr2
     character(len=*), parameter :: dbugfile = 'fort.debug'
     character(len=*), parameter :: matfile = 'fort.nplot'
     character(len=*), parameter :: parmfile = 'fort.parameters'
+    character(len=*), parameter :: parmfile = 'sediment.data'
 
     ! Open parameter and debug files
     open(dbugunit,file=dbugfile,status='unknown',form='formatted')
