@@ -58,6 +58,8 @@
 !              4044 Derring Hall (0420)
 !              Blacksburg, VA 24061
 !              tanghui@vt.edu
+! What's new:
+!           Add sediment transport module for this model
 ! =========================================================================
 program amr2
 
@@ -126,7 +128,6 @@ program amr2
     character(len=*), parameter :: dbugfile = 'fort.debug'
     character(len=*), parameter :: matfile = 'fort.nplot'
     character(len=*), parameter :: parmfile = 'fort.parameters'
-    character(len=*), parameter :: sedfile = 'sediment.data'
 
     !****************************************************************
     ! Open parameter and debug files
@@ -161,7 +162,7 @@ program amr2
 
     ! ==========================================================================
     ! Output Options
-    ! Output style
+    ! Output style: 1: never output; 2: given number of check times; 3: given check time interval
     read(inunit,*) output_style
     if (output_style == 1) then
         read(inunit,*) nout
@@ -208,7 +209,7 @@ program amr2
     if (naux > 0) then
         allocate(output_aux_components(naux))
         read(inunit,*) (output_aux_components(i),i=1,naux)
-        read(inunit,*) output_aux_onlyonce
+        read(inunit,*) output_aux_onlyonce !remember the output_aux_onlyonce should be turn on for sediment transport
     endif
 
     ! ==========================================================================
@@ -256,6 +257,7 @@ program amr2
     read(inunit,*) mthbc(2),mthbc(4)
 
     ! 1 = left, 2 = right 3 = bottom 4 = top boundary
+    !   1: 0 order; 2: periodic boudary; 3:solid; 4:?; 5: sphere boundary
     xperdom = (mthbc(1) == 2 .and. mthbc(2) == 2)
     yperdom =  (mthbc(3) == 2 .and. mthbc(4) == 2)
     spheredom =  (mthbc(3) == 5 .and. mthbc(4) == 5)
@@ -298,6 +300,7 @@ program amr2
     read(inunit,*) rstfile
 
     read(inunit,*) checkpt_style
+    !check style: 0: never check, 2: given number of check times; 3: given check time interval
     if (checkpt_style == 0) then
         ! Never checkpoint:
         checkpt_interval = iinfinity
@@ -374,15 +377,14 @@ program amr2
 
     close(inunit)
     ! Finished with reading in parameters
-    ! ==========================================================================
-
+    !****************************************************************
     ! Read in region and gauge data
     call set_regions('regions.data')
     call set_gauges('gauges.data')
-
+    !****************************************************************
     ! New fixed grid routines to keep track of max over computation:
     call set_fgmax('fgmax.data')
-
+    !****************************************************************
     ! Look for capacity function via auxtypes:
     mcapa = 0
     do iaux = 1, naux
@@ -429,7 +431,7 @@ program amr2
         stop
     endif
 
-
+    !****************************************************************
     ! Write out parameters
     write(parmunit,*) ' '
     write(parmunit,*) 'Running amrclaw with parameter values:'
@@ -450,7 +452,7 @@ program amr2
     else
         matlabu   = 1
     endif
-
+    !****************************************************************
     if (rest) then
 
         open(outunit, file=outfile, status='unknown', position='append', &
@@ -477,15 +479,15 @@ program amr2
 
         cflmax = 0.d0   ! otherwise use previously heckpointed val
 
-        lentot = 0
-        lenmax = 0
-        lendim = 0
-        rvol   = 0.0d0
+        lentot = 0 !?
+        lenmax = 0 !?
+        lendim = 0 !?
+        rvol   = 0.0d0 !?
         do i   = 1, mxnest
-            rvoll(i) = 0.0d0
+            rvoll(i) = 0.0d0 !?
         enddo
-        evol = 0.0d0
-        call stst1()
+        evol = 0.0d0 1?
+        call stst1()!initial some variable
 
 
         ! changed 4/24/09: store dxmin,dymin for setaux before
@@ -493,14 +495,14 @@ program amr2
         dxmin = hxposs(mxnest)
         dymin = hyposs(mxnest)
 
-        call domain(nvar,vtime,nx,ny,naux,t0)
+        call domain(nvar,vtime,nx,ny,naux,t0) ! set up domain
 
         ! Hold off on gauges until grids are set. 
         ! The fake call to advance at the very first timestep 
         ! looks at the gauge array but it is not yet built
         num_gauge_SAVE = num_gauges
         num_gauges = 0
-        call setgrd(nvar,cut,naux,dtinit,t0)
+        call setgrd(nvar,cut,naux,dtinit,t0)! set up grid
         num_gauges = num_gauge_SAVE
 
 ! commented out to match 4-x version
@@ -517,7 +519,7 @@ program amr2
         nstart = 0
     endif
 
-
+    !****************************************************************
     write(parmunit,*) ' '
     write(parmunit,*) '--------------------------------------------'
     write(parmunit,*) ' '
@@ -566,7 +568,7 @@ program amr2
     print *, 'Done reading data, starting computation ...  '
     print *, ' '
 
-
+    !****************************************************************
 
     call outtre (mstart,printout,nvar,naux)
     write(outunit,*) "  original total mass ..."
@@ -580,14 +582,14 @@ program amr2
     endif
     close(parmunit)
 
- 
+     !****************************************************************
 
     ! --------------------------------------------------------
     !  Tick is the main routine which drives the computation:
     ! --------------------------------------------------------
     call tick(nvar,cut,nstart,vtime,time,naux,t0,rest,dt_max)
     ! --------------------------------------------------------
-
+    !****************************************************************
     ! Done with computation, cleanup:
 
     ! Print out the fgmax files
@@ -715,5 +717,5 @@ program amr2
     ! Close output and debug files.
     close(outunit)
     close(dbugunit)
-
+    !****************************************************************
 end program amr2
