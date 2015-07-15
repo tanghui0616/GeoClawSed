@@ -265,14 +265,14 @@
 
 
                     ! Check that topo arrays cover full domain: need to check the area but not now!
-                    !call topoarea(xlower,xupper,ylower,yupper,1,area)
-                    !area_domain = (yupper-ylower)*(xupper-xlower)
-                    !if (abs(area - area_domain) > 1e-12*area_domain) then
-                    !    write(6,*) '**** sediment arrays do not cover domain'
-                    !    write(6,*) '**** area of overlap = ', area
-                    !    write(6,*) '**** area of domain  = ', area_domain
-                    !    stop
-                    !endif
+                    call sedarea(xlower,xupper,ylower,yupper,1,area)
+                    area_domain = (yupper-ylower)*(xupper-xlower)
+                    if (abs(area - area_domain) > 1e-12*area_domain) then
+                        write(6,*) '**** sediment arrays do not cover domain'
+                        write(6,*) '**** area of overlap = ', area
+                        write(6,*) '**** area of domain  = ', area_domain
+                        stop
+                    endif
                 endif
             end subroutine read_sed_setting
             ! ========================================================================
@@ -753,7 +753,12 @@
 
                 mfid = mtsedorder(m)
                 i0=i0sed(mfid)
-
+                if ((mtsedfiles /= mpsedfiles)) then
+                    write(SED_PARM_UNIT,*) 'Warning:'
+                    write(SED_PARM_UNIT,*) '   The number of thickness and grainsize distribution file is not same! '
+                    write(SED_PARM_UNIT,*) '   Check your data! '
+                    exit
+                endif
                 if (m == mtsedfiles) then
                     ! innermost step of recursion reaches this point.
                     ! only using coarsest topo grid -- compute directly...
