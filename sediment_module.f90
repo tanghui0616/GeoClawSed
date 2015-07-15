@@ -91,7 +91,7 @@
                 use geoclaw_module
                 use amr_module, only: xlower,xupper,xlower,yupper
                 use Set_Precision
-                use topo_module, only: topoarea
+
 
                 implicit none
 
@@ -176,7 +176,7 @@
                         msed(i) = mxsed(i)*mysed(i)
                     enddo
                     ! Indexing into work array
-                    i0topo(1)=1
+                    i0sed(1)=1
                     if (mtsedfiles > 1) then
                         do i=2,mtsedfiles
                             i0sed(i)=i0sed(i-1) + msed(i-1)
@@ -245,7 +245,7 @@
                                             '  finest to coarsest: ', &
                                 (msedorder(rank),rank=1,mtsedfiles)
                     write(SED_PARM_UNIT,*) ' '
-                    i0topo0(1) = 1
+                    i0sed0(1) = 1
                     mtsed0size = dot_product(msed,sed0save)
                     allocate(sed0twork(mtsed0size))
                     allocate(sed0pwork(mpsed0size,gmax))
@@ -724,6 +724,65 @@
                 write(SED_PARM_UNIT,*) '    method to caculate equibrium sediment concentration',trim
                 write(SED_PARM_UNIT,*) '    method to caculate sediment flux',method
             end subroutine set_sed
+
+            recursive subroutine sedarea(x1,x2,y1,y2,m,area)
+
+                use Set_Precision
+
+            ! Compute the area of overlap of sediment file  with the rectangle (x1,x2) x (y1,y2)
+            ! using sediment arrays indexed mtsedorder(mtopofiles) through mtsedorder(m)
+            ! (coarse to fine).
+            ! The main call to this subroutine has corners of a physical domain for
+            ! the rectangle and m = 1 in order to compute the area of overlap of
+            ! domain by all topo arrays.  Used to check inputs and insure topo
+            ! covers domain.
+
+            ! similar to topoarea
+
+                implicit none
+
+                ! arguments
+                real (kind=Prec), intent(in) :: x1,x2,y1,y2
+                integer, intent(in) :: m
+                real (kind=Prec), intent(out) :: area
+
+                ! local
+                real(kind=Prec) :: xmlo,xmhi,ymlo,ymhi,x1m,x2m, &
+                    y1m,y2m, area1,area2,area_m
+                integer :: mfid, indicator, i0
+
+                mfid = mtsedorder(m)
+                i0=i0sed(mfid)
+
+                if (m == mtsedfiles) then
+                    ! innermost step of recursion reaches this point.
+                    ! only using coarsest topo grid -- compute directly...
+                    call intersection(indicator,area,xmlo,xmhi, &
+                            ymlo,ymhi, x1,x2,y1,y2, &
+                            xlowsed(mfid),xhised(mfid),ylowsed(mfid),yhised(mfid))
+
+                else
+                    ! recursive call to compute area using one fewer topo grids:
+                    call sedarea(x1,x2,y1,y2,m+1,area1)
+
+                    ! region of intersection of cell with new topo grid:
+                    call intersection(indicator,area_m,x1m,x2m, &
+                        y1m,y2m, x1,x2,y1,y2, &
+                        xlowsed(mfid),xhised(mfid),ylowsed(mfid),yhised(mfid))
+
+
+                    if (area_m > 0) then
+
+                        ! correction to subtract out from previous set of topo grids:
+                        call sedarea(x1m,x2m,y1m,y2m,m+1,area2)
+
+                        ! adjust integral due to corrections for new topo grid:
+                        area = area1 - area2 + area_m
+                    else
+                        area = area1
+                    endif
+                endif
+            end subroutine sedarea
     end module sediment_module
 
 

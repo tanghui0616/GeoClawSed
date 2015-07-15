@@ -49,15 +49,15 @@
         !Integer         ::      k                                    !  [-]      index
         !Integer         ::      nl                                   !  [-]      index
         !Integer         ::      ii                                   !  [-]      index
-        Integer         ::      suc                    = 0           !  [-]     Calibration factor for suspensions transports
-        Integer         ::      bed                    = 0           !  [-]     Calibration factor for bed transports
-        Integer         ::      sourcesink             = 0           !  [-]     (advanced) In suspended transport use source-sink terms to calculate bed level change (1) or sus transport gradients (0)
-        Integer         ::      avalanching            = 1           !  [-]     Include avalanching (1) or exclude (0)
-        Integer         ::      struct                 = 1           !  [-]     Switch for hard structures (1) or close (0)
-        Integer         ::      ndz                    = 0           !  [-]    the total number of sediment layer erode during avanlanching
-        Integer         ::      nd_var                 = 5           !  [-]     (advanced) Index of layer with variable thickness
+        !Integer         ::      suc                    = 0           !  [-]     Calibration factor for suspensions transports
+        !Integer         ::      bed                    = 0           !  [-]     Calibration factor for bed transports
+        !Integer         ::      sourcesink             = 0           !  [-]     (advanced) In suspended transport use source-sink terms to calculate bed level change (1) or sus transport gradients (0)
+        !Integer         ::      avalanching            = 1           !  [-]     Include avalanching (1) or exclude (0)
+        !Integer         ::      struct                 = 1           !  [-]     Switch for hard structures (1) or close (0)
+        !Integer         ::      ndz                    = 0           !  [-]    the total number of sediment layer erode during avanlanching
+        !Integer         ::      nd_var                 = 5           !  [-]     (advanced) Index of layer with variable thickness
 
-        Logical         ::      aval                   = .false.     !  [-]
+        !Logical         ::      aval                   = .false.     !  [-]
         !Real(kind=Prec) ::      rhos                   = 2650.0      !  [kgm^-3] Solid sediment density (no pores)
         !Real(kind=Prec) ::      rho                    = 1025.0      !  [kgm^-3] Density of water
         !Real(kind=Prec) ::      g                      = 9.81        !  [ms^-2] Gravitational acceleration
@@ -133,7 +133,7 @@
         Integer,dimension(:,:,:),allocatable ::  indSvs                         != 0          !  [-] index of suspended load in y direction     imax:jmax:gmax
         Integer,dimension(:,:,:),allocatable ::  indSvb                         != 0          !  [-] index of bed load in y direction           imax:jmax:gmax
 
-        Real(kind=Prec),dimension(:),allocatable ::      D                      != 0          !  [m]         Grain size classes                  gmax
+        !Real(kind=Prec),dimension(:),allocatable ::      D                      != 0          !  [m]         Grain size classes                  gmax
         Real(kind=Prec),dimension(:),allocatable ::      A                      != 0          !  [-]     Parameter for settling velocity         gmax
         Real(kind=Prec),dimension(:),allocatable ::      alpha1                 != 0          !  [-]     Parameter for settling velocity         gmax
         Real(kind=Prec),dimension(:),allocatable ::      alpha2                 != 0          !  [-]     Parameter for settling velocity         gmax
