@@ -52,8 +52,8 @@
         real(kind=Prec), allocatable :: sedtime(:)
         integer, allocatable ::  mxsed(:), mysed(:)
 
-        integer, allocatable :: i0sed(:), mtsed(:), msedorder(:)
-        integer, allocatable :: minlevelsed(:), maxlevelsed(:), isedtype(:)
+        integer, allocatable :: i0sed(:), msed(:), msedorder(:)
+        integer, allocatable :: minlevelsed(:), maxlevelsed(:), itsedtype(:),ipsedtype(:)
         integer, allocatable :: sedID(:),sed0save(:)
         logical :: sed_finalized ! don't need here 
 
@@ -62,11 +62,11 @@
 
         !Analytic sediment add later
 
-        ! Initial topography
+        ! Initial sediment
         ! Work array for initial topography (only arrays where topo evolves)
-        real(kind=Prec), allocatable :: sed0work(:)
+        real(kind=Prec), allocatable :: sed0twork(:),sed0pwork(:,:)
         integer, allocatable :: i0sed0(:),sed0ID(:)
-        integer :: msed0size,msed0files
+        integer :: mtsed0size,mtsed0files,mpsed0size,mpsed0files
 
 
         ! ========================================================================
@@ -81,6 +81,7 @@
         Real(kind=Prec) ::      morstart
         Real(kind=Prec) ::       vareps,split,merge,beta
         CHARACTER(120)  ::      limit_method,trim,method
+
         contains
 
             subroutine read_sed_setting(file_name)
@@ -96,7 +97,7 @@
                 character(len=*), intent(in), optional :: file_name
 
                 !locals
-                integer, parameter :: iunit = 7
+                integer, parameter :: iunit = 7,SED_PARM_UNIT=78
                 integer :: i,j,ised,finer_than,rank
                 real(kind=Prec) :: area_i,area_j,x_junk,y_junk
                 real(kind=Prec) :: area, area_domain
@@ -140,15 +141,15 @@
                         write(SED_PARM_UNIT,*) '   Check your data! '
                         return
                     endif
-                    write(SED_PARM_UNIT,*) '   msedfiles = ',msedfiles
-                    write(SED_PARM_UNIT,*) '   psedfiles = ',psedfiles
+                    write(SED_PARM_UNIT,*) '   msedfiles = ',mtsedfiles
+                    write(SED_PARM_UNIT,*) '   psedfiles = ',mpsedfiles
 
                     ! Read and allocate data parameters for each file, as thickness file and grainsize file is same, we use one to put, two file share the same data may not good
                     allocate(mxsed(mtsedfiles),mysed(mtsedfiles))
                     allocate(xlowsed(mtsedfiles),ylowsed(mtsedfiles))
                     allocate(tlowsed(mtsedfiles),xhised(mtsedfiles),yhised(mtsedfiles))
                     allocate(thised(mtsedfiles),dxsed(mtsedfiles),dysed(mtsedfiles))
-                    allocate(sedtfname(mtsedfiles),isedtype(mtsedfiles))
+                    allocate(sedtfname(mtsedfiles),itsedtype(mtsedfiles))
                     allocate(sedpfname(mpsedfiles),ipsedtype(mpsedfiles)) !add to file
                     allocate(minlevelsed(mtsedfiles),maxlevelsed(mtsedfiles))
                     allocate(i0sed(mtsedfiles),msed(mtsedfiles),msedorder(mtsedfiles))
@@ -157,16 +158,16 @@
 
                     do i=1,mtsedfiles
                         read(iunit,*) sedtfname(i)
-                        read(iunit,*) isedtype(i),minlevelsed(i), maxlevelsed(i), &
+                        read(iunit,*) itsedtype(i),minlevelsed(i), maxlevelsed(i), &
                             tlowsed(i),thised(i)
 
                         write(SED_PARM_UNIT,*) '   '
                         write(SED_PARM_UNIT,*) '   ',sedtfname(i)
-                        write(SED_PARM_UNIT,*) '  isedtype = ', isedtype(i)
+                        write(SED_PARM_UNIT,*) '  itsedtype = ', itsedtype(i)
                         write(SED_PARM_UNIT,*) '  minlevel, maxlevel = ', &
                             minlevelsed(i), maxlevelsed(i)
                         write(SED_PARM_UNIT,*) '  tlow, thi = ', tlowsed(i),thised(i)
-                        call read_sed_header(sedtfname(i),isedtype(i),mxsed(i), &
+                        call read_sed_header(sedtfname(i),itsedtype(i),mxsed(i), &
                                 mysed(i),xlowsed(i),ylowsed(i),xhised(i),yhised(i), &
                                 dxsed(i),dysed(i))
                         sedID(i) = i
@@ -176,7 +177,7 @@
                     i0topo(1)=1
                     if (mtsedfiles > 1) then
                         do i=2,mtsedfiles
-                            i0topo(i)=i0topo(i-1) + mtopo(i-1)
+                            i0sed(i)=i0sed(i-1) + msed(i-1)
                         enddo
                     endif
 
@@ -186,36 +187,37 @@
                                     tlowsed(i),thised(i)
                         write(SED_PARM_UNIT,*) '   '
                         write(SED_PARM_UNIT,*) '   ',sedpfname(i)
-                        write(SED_PARM_UNIT,*) '  isedtype = ', isedtype(i)
+                        write(SED_PARM_UNIT,*) '  ipsedtype = ', ipsedtype(i)
                         write(SED_PARM_UNIT,*) '  minlevel, maxlevel = ', &
                                 minlevelsed(i), maxlevelsed(i)
                         write(SED_PARM_UNIT,*) '  tlow, thi = ', tlowsed(i),thised(i)
-                        call read_sed_header(sedpfname(i),isedtype(i),mxsed(i), &
+                        call read_sed_header(sedpfname(i),ipsedtype(i),mxsed(i), &
                                 mysed(i),xlowsed(i),ylowsed(i),xhised(i),yhised(i), &
                                 dxsed(i),dysed(i))
                     enddo
 
                     ! Read sediment information and allocate space for each file
-                    msedsize = sum(msed)
-                    allocate(sedtwork(msedsize))
-                    allocate(sedpwork(psedsize))
-                    do i=1,msedfiles
+                    mtsedsize = sum(msed)
+                    mpsedsize = sum(msed)
+                    allocate(sedtwork(mtsedsize))
+                    allocate(sedpwork(mpsedsize))
+                    do i=1,mtsedfiles
                         sedID(i) = i
                         sedtime(i) = -huge(1.0)
-                        call read_tsed_file(mxsed(i),mysed(i),isedtype(i),sedtfname(i), &
-                            sedwork(i0sed(i):i0sed(i)+msed(i)-1))
+                        call read_tsed_file(mxsed(i),mysed(i),itsedtype(i),sedtfname(i), &
+                            sedtwork(i0sed(i):i0sed(i)+msed(i)-1))
                     enddo
 
-                    do i=1,psedfiles
+                    do i=1,mpsedfiles
                         sedID(i) = i
                         sedtime(i) = -huge(1.0)
-                        call read_psed_file(mxsed(i),mysed(i),isedtype(i),sedpfname(i), &
-                            sedwork(i0sed(i):i0sed(i)+msed(i)-1))
+                        call read_psed_file(mxsed(i),mysed(i),ipsedtype(i),sedpfname(i), &
+                            sedpwork(i0sed(i):i0sed(i)+msed(i)-1))
                     enddo
-                    ! Sediment order...This determines which order to process sediment data
+                    ! Sediment order, which determines theorder to process sediment data
                     !
                     ! The finest one will be given priority in any region
-                    ! msedorder(rank) = i means that i'th sediment file has rank rank,
+                    ! msedorder(rank) = i means that i'th sediment file has rank,
                     ! where the file with rank=1 is the finest and considered first.
                     do i=1,mtsedfiles
                         finer_than = 0
@@ -241,17 +243,20 @@
                                             '  finest to coarsest: ', &
                                 (msedorder(rank),rank=1,mtsedfiles)
                     write(SED_PARM_UNIT,*) ' '
-
-                    msed0size = dot_product(msed,sed0save)
-                    allocate(sed0work(sed0size))
+                    i0topo0(1) = 1
+                    mtsed0size = dot_product(msed,sed0save)
+                    allocate(sed0twork(mtsed0size))
+                    allocate(sed0pwork(mpsed0size,gmax))
                     do i = 2,mtsedfiles
                         i0sed0(i)= i0sed0(i-1) + msed(i-1)*sed0save(i-1)
                     enddo
 
                     do i = 1,mtsedfiles
                         if (sed0save(i)>0) then
-                            sed0work(i0sed0(i):i0sed0(i)+msed(i)-1) = &
-                            sedwork(i0sed(i):i0sed(i)+msed(i)-1)
+                            sed0twork(i0sed0(i):i0sed0(i)+msed(i)-1) = &
+                            sedtwork(i0sed(i):i0sed(i)+msed(i)-1)
+                            sed0pwork(i0sed0(i):i0sed0(i)+msed(i)-1,:) = &
+                            sedpwork(i0sed(i):i0sed(i)+msed(i)-1,:)
                         endif
                     enddo
 
