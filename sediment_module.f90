@@ -400,7 +400,7 @@
                 real(kind=Prec), intent(inout) :: pbed(1:mx*my,gmax)
 
                 ! Locals
-                integer, parameter :: iunit = 19, miss_unit = 17
+                integer, parameter :: iunit = 19, miss_unit = 17,punit = 79
                 real(kind=Prec), parameter :: sed_missing = -150.d0
                 logical, parameter :: maketype2 = .false.
                 integer :: i,j,num_points,missing,status,sed_start
@@ -420,7 +420,8 @@
                         i = 0
                         status = 0
                         do i=1,mx*my
-                            read(iunit,fmt=*,iostat=status) x,y,p_temp !may have problem
+                            read(iunit,fmt=*,iostat=status) x,y
+                            read(punit,fmt=*,iostat=status) p_temp !may have problem
                             if ((i > mx * my) .and. (status == 0)) then
                                 print *,'*** Error: i > mx*my = ',mx*my
                                 print *,'*** i, mx, my: ',i,mx,my
@@ -455,7 +456,7 @@
                             select case(abs(sed_type))
                                 case(2)
                                     do i=1,mx*my
-                                        read(iunit,*) pbed(i,:)
+                                        read(punit,*) pbed(i,:)
                                         do j = 1, gmax
                                             if (pbed(i,j) == no_data_value) then
                                                 missing = missing + 1
@@ -465,10 +466,10 @@
                                     enddo
                                 case(3)
                                     do j=1,my
-                                        read(iunit,*) (pbed((j-1)*mx + i,:),i=1,mx)
+                                        read(punit,*) (pbed((j-1)*mx + i,:),i=1,mx)
                                         do i=1,mx
                                             do j = 1, gmax
-                                                if (pbed((j-1)*mx + i,:) == no_data_value) then
+                                                if (pbed((j-1)*mx + i,j) == no_data_value) then
                                                     missing = missing + 1
                                                     pbed((j-1)*mx + i,j) = sed_missing
                                                 endif
@@ -488,7 +489,7 @@
                     close(unit=iunit)
                 endif
 
-            end subroutine read_tsed_file
+            end subroutine read_psed_file
 
 
             ! ========================================================================
