@@ -521,12 +521,12 @@
                 ! Local
                 integer, parameter :: iunit = 19
                 integer :: sed_size, status
-                real(kind=8) :: x,y,th,nodata_value
+                real(kind=8) :: x,y,th,no_data_value
                 logical :: found_file
 
                 inquire(file=fname,exist=found_file)
                 if (.not. found_file) then
-                    print *, 'Missing sed file:'
+                    print *, 'Missing sediment file:'
                     print *, '   ', fname
                     stop
                 endif
@@ -538,48 +538,48 @@
                     ! determine data size
                     case(1)
                     ! Initial size variables
-                    sed_size = 0
-                    mx = 0
+                        sed_size = 0
+                        mx = 0
 
-                    ! Read in first values, determines xlow and yhi
-                    read(iunit,*) xll,yhi
-                    sed_size = sed_size + 1
-                    mx = mx + 1
-
-                    ! Go through first row figuring out mx, continue to count
-                    y = yhi
-                    do while (yhi == y)
-                        read(iunit,*) x,y,th
+                        ! Read in first values, determines xlow and yhi
+                        read(iunit,*) xll,yhi
                         sed_size = sed_size + 1
                         mx = mx + 1
-                    enddo
-                    mx = mx - 1
-                    ! Continue to count the rest of the lines
-                    do
-                        read(iunit,fmt=*,iostat=status) x,y,th
-                        if (status /= 0) exit
-                        sed_size = sed_size + 1
-                    enddo
-                    if (status > 0) then
-                        print *,"ERROR:  Error reading header of sediment file ",fname
-                        stop
-                    endif
 
-                    ! Calculate remaining values
-                    my = sed_size / mx
-                    xhi = x
-                    yll = y
-                    dx = (xhi-xll) / (mx-1)
-                    dy = (yhi-yll) / (my-1)
+                        ! Go through first row figuring out mx, continue to count
+                        y = yhi
+                        do while (yhi == y)
+                            read(iunit,*) x,y,th
+                            sed_size = sed_size + 1
+                            mx = mx + 1
+                        enddo
+                        mx = mx - 1
+                        ! Continue to count the rest of the lines
+                        do
+                            read(iunit,fmt=*,iostat=status) x,y,th
+                            if (status /= 0) exit
+                            sed_size = sed_size + 1
+                        enddo
+                        if (status > 0) then
+                            print *,"ERROR:  Error reading header of sediment file ",fname
+                            stop
+                        endif
 
-                    ! ASCII file with header followed by z data
+                        ! Calculate remaining values
+                        my = sed_size / mx
+                        xhi = x
+                        yll = y
+                        dx = (xhi-xll) / (mx-1)
+                        dy = (yhi-yll) / (my-1)
+
+                        ! ASCII file with header followed by z data
                     case(2:3)
                         read(iunit,*) mx
                         read(iunit,*) my
                         read(iunit,*) xll
                         read(iunit,*) yll
                         read(iunit,*) dx
-                        read(iunit,*) nodata_value
+                        read(iunit,*) no_data_value
                         dy = dx
                         xhi = xll + (mx-1)*dx
                         yhi = yll + (my-1)*dy
