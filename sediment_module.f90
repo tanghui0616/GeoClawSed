@@ -38,6 +38,7 @@
 
         implicit none
         save
+        integer, parameter :: SED_PARM_UNIT = 78
 
         ! Work array for Sediment for all t
         real(kind=8), allocatable :: sedtwork(:),sedpwork(:)
@@ -75,12 +76,13 @@
         Real(kind=Prec) ::      rhos,rho,por,cmax,facDc,hcr,thick
         Integer :: gmax,lmax
         Real(kind=Prec), dimension(:),allocatable :: D
-        Real(kind=Prec) ::      g,vis,Te,Trep,eps,k0,m0,tsfac,Tsmin,smax,cf,facDc
+        Real(kind=Prec) ::      g,vis,Te,Trep,eps,k0,k1,m0,tsfac,Tsmin,smax,cf,facDc
         Real(kind=Prec) ::      nuh,nuhfac,gammaWs,a1,hswitch,wetslp,dryslp
-        Integer :: sourcesink,avalanching,struct,morfac,sws
+        Integer :: sourcesink,struct,morfac,sws
         Real(kind=Prec) ::      morstart
         Real(kind=Prec) ::       vareps,split,merge,beta
         CHARACTER(120)  ::      limit_method,trim,method
+        Logical         ::      aval
 
         contains
 
@@ -658,7 +660,7 @@
                 read(unit,*) toler
                 !processes control paramter 
                 read(unit,*) sourcesink
-                read(unit,*) avalanching
+                read(unit,*) aval
                 read(unit,*) struct
                 read(unit,*) morfac
                 read(unit,*) thetanum
@@ -666,7 +668,6 @@
                 read(unit,*) morstart
                 read(unit,*) split
                 read(unit,*) merge
-                read(unit,*) beta
                 !algorithm parameter
                 read(unit,*) vareps
                 read(unit,*) k1
@@ -709,7 +710,7 @@
                 write(SED_PARM_UNIT,*) '   Critical avalanching slope above water:',dryslp
                 write(SED_PARM_UNIT,*) '   toler for sediment flux limitor:',toler
                 write(SED_PARM_UNIT,*) '    use source-sink terms to calculate bed level change:',sourcesink
-                write(SED_PARM_UNIT,*) '    Include avalanching:',avalanching
+                write(SED_PARM_UNIT,*) '    Include avalanching:',aval
                 write(SED_PARM_UNIT,*) '    Switch for hard structures:',struct
                 write(SED_PARM_UNIT,*) '    morphological acceleration factor:',morfac
                 write(SED_PARM_UNIT,*) '    Coefficient determining scheme:',thetanum
