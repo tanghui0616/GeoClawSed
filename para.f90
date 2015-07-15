@@ -40,15 +40,15 @@
     !
     ! constant
     !  Type                     name                   initialize    !  [unit] (advanced/deprecated) description
-        Integer         ::      imax                   =10            !  [-]      Number of points in the x-direction
-        Integer         ::      jmax                   =10            !  [-]      Number of points in the y-direction
-        Integer         ::      lmax                   =10            !  [-]      Number of points in the y-direction
-        Integer         ::      gmax                   =2            !  [-]      Number of Grain size classes
-        Integer         ::      i                                    !  [-]      index
-        Integer         ::      j                                    !  [-]      index
-        Integer         ::      k                                    !  [-]      index
-        Integer         ::      nl                                   !  [-]      index
-        Integer         ::      ii                                   !  [-]      index
+        !Integer         ::      imax                   =10            !  [-]      Number of points in the x-direction
+        !Integer         ::      jmax                   =10            !  [-]      Number of points in the y-direction
+        !Integer         ::      lmax                   =10            !  [-]      Number of points in the y-direction
+        !Integer         ::      gmax                   =2            !  [-]      Number of Grain size classes
+        !Integer         ::      i                                    !  [-]      index
+        !Integer         ::      j                                    !  [-]      index
+        !Integer         ::      k                                    !  [-]      index
+        !Integer         ::      nl                                   !  [-]      index
+        !Integer         ::      ii                                   !  [-]      index
         Integer         ::      suc                    = 0           !  [-]     Calibration factor for suspensions transports
         Integer         ::      bed                    = 0           !  [-]     Calibration factor for bed transports
         Integer         ::      sourcesink             = 0           !  [-]     (advanced) In suspended transport use source-sink terms to calculate bed level change (1) or sus transport gradients (0)
@@ -58,63 +58,63 @@
         Integer         ::      nd_var                 = 5           !  [-]     (advanced) Index of layer with variable thickness
 
         Logical         ::      aval                   = .false.     !  [-]
-        Real(kind=Prec) ::      rhos                   = 2650.0      !  [kgm^-3] Solid sediment density (no pores)
-        Real(kind=Prec) ::      rho                    = 1025.0      !  [kgm^-3] Density of water
-        Real(kind=Prec) ::      g                      = 9.81        !  [ms^-2] Gravitational acceleration
-        Real(kind=Prec) ::      vis                    = 8.9e-4      !  [m^2/s] kinematic viscosity
-        Real(kind=Prec) ::      delta                  = 0           !  [-]     Parameter for settling velocity
-        Real(kind=Prec) ::      Sster                  = 0           !  [-]     Parameter for settling velocity
-        Real(kind=Prec) ::      wster                  = 0           !  [-]     Parameter for settling velocity
-        Real(kind=Prec) ::      c1                     = 0           !  [-]     Parameter for settling velocity
-        Real(kind=Prec) ::      c2                     = 0           !  [-]     Parameter for settling velocity
-        Real(kind=Prec) ::      Trep                   = 10.0           !  [s]     Representative wave period
-        Real(kind=Prec) ::      Te                     = 20.0        !  [C]     Water temperature
-        Real(kind=Prec) ::      px                     = 3.1415926   !  [-]     Pi
-        Real(kind=Prec) ::      tsfac                  = 0.1         !  [-]     Coefficient determining Ts = tsfac * h/ws in sediment source term
-        Real(kind=Prec) ::      Tsmin                  = 0.5         !  [s]     Minimum adaptation time scale in advection diffusion equation sediment
-        Real(kind=Prec) ::      Ass                    = 0.0         !  [-]     suspended load coeffient
-        Real(kind=Prec) ::      smax                   = -1.0        !  [-]     maximum Shields parameter for ceq Diane Foster
-        Real(kind=Prec) ::      cf                     = 0.003         !  [-]     Friction coefficient flow
-        Real(kind=Prec) ::      eps                    = 0.005       !  [m]     Threshold water depth above which cells are considered wet
-        Real(kind=Prec) ::      cmax                   = 0.1         !  [m^3/m^3]  Maximum allowed sediment concentration
-        Real(kind=Prec) ::      perc                   = 0.0         !  [-]     Percentage of bed sediment concentration
-        Real(kind=Prec) ::      exp_ero                = 0.0         !  [-]     predict erosion rate per fraction 
-        Real(kind=Prec) ::      morfac                 = 1.0         !  [-]     morphological acceleration factor
-        Real(kind=Prec) ::      por                    = 0.4         !  [-]     porosity
-        Real(kind=Prec) ::      facDc                  = 1.0         !  [-]     control sediment diffusion coefficient
-        Real(kind=Prec) ::      nuh                    = 0.1         !  [m^2s^-1]     horizontal background viscosity
-        Real(kind=Prec) ::      nuhfac                 = 1.0         !  [m^2s^-1]     Viscosity switch for roller induced turbulent horizontal viscosity
-        Real(kind=Prec) ::      thetanum               = 1.0         !  [-]     Coefficient determining whether upwind (1) or central scheme (0.5) is used.
-        Real(kind=Prec) ::      facsl                  = 0.0         !  [-]     Factor bedslope effect
-        Real(kind=Prec) ::      vareps                 = 1.0         !  [-]     Coefficient determining order of accuracy
-        Real(kind=Prec) ::      k0                     = 0.41         !  [-]     von kaman coefficient
-        Real(kind=Prec) ::      k1                     = -1.0        !  [-]     Coefficient determining whether fully upwind (-1) or central scheme (0.5) is used.
-        Real(kind=Prec) ::      hcr                    = 0.01        !  [m]     water depth consider sediment transport
-        Real(kind=Prec) ::      gammaWs                = 0.056       !  [-]     constant to calculate bed roughness
-        Real(kind=Prec) ::      a1                     = 0.0         !  [-]     constant for caculating bed roughness
-        Real(kind=Prec) ::      m0                     = 0.015         !  [-]     mining coeffcient
-        Real(kind=Prec) ::      sws                    = 0.0         !  [-]     (advanced) 1 = short wave & roller stirring and undertow, 0 = no short wave & roller stirring and undertow
-        Real(kind=Prec) ::      morstart               = 120.0       !  [s]     Start time morphology, in morphological time
-        Real(kind=Prec) ::      hswitch                = 0.1         !  [m]      Water depth at which is switched from wetslp to dryslp
-        Real(kind=Prec) ::      dzmax                  = 0.0         !  [m/s/m] Maximum bedlevel change due to avalanching
-        Real(kind=Prec) ::      wetslp                 = 0.03         !  [-] Critical avalanching slope under water (dz/dx and dz/dy)
-        Real(kind=Prec) ::      dryslp                 = 0.01         !  [-] Critical avalanching slope above water (dz/dx and dz/dy)
-        Real(kind=Prec) ::      dx                     = 1.0         !  [m]  cell size of x direction
-        Real(kind=Prec) ::      dy                     = 1.0         !  [m]  cell size of y direction
-        Real(kind=Prec) ::      split                  = 1.01         !  [-]  Split threshold for variable sediment layer (ratio to nominal thickness)
-        Real(kind=Prec) ::      merge                  = 0.01        !  [-]  Merge threshold for variable sediment layer (ratio to nominal thickness)
+        !Real(kind=Prec) ::      rhos                   = 2650.0      !  [kgm^-3] Solid sediment density (no pores)
+        !Real(kind=Prec) ::      rho                    = 1025.0      !  [kgm^-3] Density of water
+        !Real(kind=Prec) ::      g                      = 9.81        !  [ms^-2] Gravitational acceleration
+        !Real(kind=Prec) ::      vis                    = 8.9e-4      !  [m^2/s] kinematic viscosity
+        !Real(kind=Prec) ::      delta                  = 0           !  [-]     Parameter for settling velocity
+        !Real(kind=Prec) ::      Sster                  = 0           !  [-]     Parameter for settling velocity
+        !Real(kind=Prec) ::      wster                  = 0           !  [-]     Parameter for settling velocity
+        !Real(kind=Prec) ::      c1                     = 0           !  [-]     Parameter for settling velocity
+        !Real(kind=Prec) ::      c2                     = 0           !  [-]     Parameter for settling velocity
+        !Real(kind=Prec) ::      Trep                   = 10.0           !  [s]     Representative wave period
+        !Real(kind=Prec) ::      Te                     = 20.0        !  [C]     Water temperature
+        !Real(kind=Prec) ::      px                     = 3.1415926   !  [-]     Pi
+        !Real(kind=Prec) ::      tsfac                  = 0.1         !  [-]     Coefficient determining Ts = tsfac * h/ws in sediment source term
+        !Real(kind=Prec) ::      Tsmin                  = 0.5         !  [s]     Minimum adaptation time scale in advection diffusion equation sediment
+        !Real(kind=Prec) ::      Ass                    = 0.0         !  [-]     suspended load coeffient
+        !Real(kind=Prec) ::      smax                   = -1.0        !  [-]     maximum Shields parameter for ceq Diane Foster
+        !Real(kind=Prec) ::      cf                     = 0.003         !  [-]     Friction coefficient flow
+        !Real(kind=Prec) ::      eps                    = 0.005       !  [m]     Threshold water depth above which cells are considered wet
+        !Real(kind=Prec) ::      cmax                   = 0.1         !  [m^3/m^3]  Maximum allowed sediment concentration
+        !Real(kind=Prec) ::      perc                   = 0.0         !  [-]     Percentage of bed sediment concentration
+        !Real(kind=Prec) ::      exp_ero                = 0.0         !  [-]     predict erosion rate per fraction
+        !Real(kind=Prec) ::      morfac                 = 1.0         !  [-]     morphological acceleration factor
+        !Real(kind=Prec) ::      por                    = 0.4         !  [-]     porosity
+        !Real(kind=Prec) ::      facDc                  = 1.0         !  [-]     control sediment diffusion coefficient
+        !Real(kind=Prec) ::      nuh                    = 0.1         !  [m^2s^-1]     horizontal background viscosity
+        !Real(kind=Prec) ::      nuhfac                 = 1.0         !  [m^2s^-1]     Viscosity switch for roller induced turbulent horizontal viscosity
+        !Real(kind=Prec) ::      thetanum               = 1.0         !  [-]     Coefficient determining whether upwind (1) or central scheme (0.5) is used.
+        !Real(kind=Prec) ::      facsl                  = 0.0         !  [-]     Factor bedslope effect
+        !Real(kind=Prec) ::      vareps                 = 1.0         !  [-]     Coefficient determining order of accuracy
+        !Real(kind=Prec) ::      k0                     = 0.41         !  [-]     von kaman coefficient
+        !Real(kind=Prec) ::      k1                     = -1.0        !  [-]     Coefficient determining whether fully upwind (-1) or central scheme (0.5) is used.
+        !Real(kind=Prec) ::      hcr                    = 0.01        !  [m]     water depth consider sediment transport
+        !Real(kind=Prec) ::      gammaWs                = 0.056       !  [-]     constant to calculate bed roughness
+        !Real(kind=Prec) ::      a1                     = 0.0         !  [-]     constant for caculating bed roughness
+        !Real(kind=Prec) ::      m0                     = 0.015         !  [-]     mining coeffcient
+        !Real(kind=Prec) ::      sws                    = 0.0         !  [-]     (advanced) 1 = short wave & roller stirring and undertow, 0 = no short wave & roller stirring and undertow
+        !Real(kind=Prec) ::      morstart               = 120.0       !  [s]     Start time morphology, in morphological time
+        !Real(kind=Prec) ::      hswitch                = 0.1         !  [m]      Water depth at which is switched from wetslp to dryslp
+        !Real(kind=Prec) ::      dzmax                  = 0.0         !  [m/s/m] Maximum bedlevel change due to avalanching
+        !Real(kind=Prec) ::      wetslp                 = 0.03         !  [-] Critical avalanching slope under water (dz/dx and dz/dy)
+        !Real(kind=Prec) ::      dryslp                 = 0.01         !  [-] Critical avalanching slope above water (dz/dx and dz/dy)
+        !Real(kind=Prec) ::      dx                     = 1.0         !  [m]  cell size of x direction
+        !Real(kind=Prec) ::      dy                     = 1.0         !  [m]  cell size of y direction
+        !Real(kind=Prec) ::      split                  = 1.01         !  [-]  Split threshold for variable sediment layer (ratio to nominal thickness)
+        !Real(kind=Prec) ::      merge                  = 0.01        !  [-]  Merge threshold for variable sediment layer (ratio to nominal thickness)
         Real(kind=Prec) ::      toler                  = 1e-6        !  [-]  toler for sediment flux limitor
-        Real(kind=Prec) ::      beta                   = 1           !  [-]  parameter for beta sediment flux limitor
-        Real(kind=Prec) ::      dzleft                 = 0.0         !  [m]  thickness change due avanlanching
-        Real(kind=Prec) ::      dzt                    = 0.0         !  [m]  sediment thickness move for each step during avanlanching
-        Real(kind=Prec) ::      dzavt                  = 0.0         !  [m]  sediment thickness already move during avanlanching
-        Real(kind=Prec) ::      frac_dz                = 0.7         !  [m]  (advanced) Relative thickness to split time step for bed
+        !Real(kind=Prec) ::      beta                   = 1           !  [-]  parameter for beta sediment flux limitor
+        !Real(kind=Prec) ::      dzleft                 = 0.0         !  [m]  thickness change due avanlanching
+        !Real(kind=Prec) ::      dzt                    = 0.0         !  [m]  sediment thickness move for each step during avanlanching
+        !Real(kind=Prec) ::      dzavt                  = 0.0         !  [m]  sediment thickness already move during avanlanching
+        !Real(kind=Prec) ::      frac_dz                = 0.7         !  [m]  (advanced) Relative thickness to split time step for bed
         !Real(kind=Prec) ::      fc                     = 0.0         !  [-]  factor over mass change in cells to limit erosion and deposition
         !Real(kind=Prec) ::      dzbt                   = 0.0         !  [-]  temperary for dzb
-        Real(kind=Prec) ::      dt                     = 0.1         !  [m]  time step
-        Real(kind=Prec) ::       t                     = 300.0         !  [m]  simulation time
-        Real(kind=Prec) ::      Savailable             = 1.0         !  [m]  sediment available to erode or deposit
-        Real(kind=Prec) ::      thick                  = 0.05         !  [m]  toal sediment thickness for each layer
+        !Real(kind=Prec) ::      dt                     = 0.1         !  [m]  time step
+        !Real(kind=Prec) ::       t                     = 300.0         !  [m]  simulation time
+        !Real(kind=Prec) ::      Savailable             = 1.0         !  [m]  sediment available to erode or deposit
+        !Real(kind=Prec) ::      thick                  = 0.05         !  [m]  toal sediment thickness for each layer
 
         CHARACTER(120)       ::      limit_method           = 'VanAlbada'                  !  [-]     method to caculate sediment flux.
         CHARACTER(120)       ::      trim                   = 'soulsby_vanrijn'          !  [-]     method to caculate equibrium sediment concentration.
