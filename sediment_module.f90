@@ -86,7 +86,7 @@
 
         contains
 
-            subroutine read_sed_setting(file_name)
+            subroutine read_sed_settings(file_name)
 
                 use geoclaw_module
                 use amr_module, only: xlower,xupper,xlower,yupper
@@ -274,7 +274,7 @@
                         stop
                     endif
                 endif
-            end subroutine read_sed_setting
+            end subroutine read_sed_settings
             ! ========================================================================
             !  read_tsed_file(mx,my,sed_type,fname,totalthick)
             !
@@ -604,7 +604,7 @@
             ! ========================================================================
             !  set_geo(fname)
             !  Reads in user parameters from the given file name if provided
-            subroutine set_sed(file_name)
+            subroutine set_sediment(file_name)
 
                 use geoclaw_module, only : pi
 
@@ -723,7 +723,7 @@
                 write(SED_PARM_UNIT,*) '    method to caculate sediment flux limiter',limit_method
                 write(SED_PARM_UNIT,*) '    method to caculate equibrium sediment concentration',trim
                 write(SED_PARM_UNIT,*) '    method to caculate sediment flux',method
-            end subroutine set_sed
+            end subroutine set_sediment
 
             recursive subroutine sedarea(x1,x2,y1,y2,m,area)
 

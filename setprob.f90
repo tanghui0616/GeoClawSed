@@ -15,6 +15,7 @@ subroutine setprob()
     call read_topo_settings()         !# specifies topography (bathymetry) files
     call set_qinit()                  !# specifies file with dh if this used instead
     call set_fixed_grids()            !# Fixed grid settings
-    call set_sediment()
+    call set_sediment()               !#sets basic parameters for sediment transport
+    call read_sed_settings()          !#specifies sediment (thickness and grainsize dsitribution) files
 
 end subroutine setprob
