@@ -1,5 +1,5 @@
 !
-subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time)
+subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time,q)
 !     ============================================
 !
 !     # set auxiliary arrays
@@ -18,10 +18,12 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time)
 
     use topo_module
 
+    use sediment_module, only: pbbed
+
     implicit none
 
     ! Arguments
-    integer, intent(in) :: mbc,mx,my,maux
+    integer, intent(in) :: mbc,mx,my,maux,i,j
     real(kind=8), intent(in) :: xlow,ylow,dx,dy
     real(kind=8), intent(inout) :: aux(maux,1-mbc:mx+mbc,1-mbc:my+mbc)
     
@@ -30,6 +32,15 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time)
     real(kind=8) :: x,y,xm,ym,xp,yp,topo_integral
     character(len=*), parameter :: aux_format = "(2i4,4d15.3)"
     integer :: skipcount,iaux,ilo,jlo
+    real(kind=8) :: u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
+    ! Get primative variable
+    do i = 1-mbc, mx+mbc
+        do j = 1-mbc, my+mbc
+            h(i,j) = q(1,i,j)
+            u(i,j) = q(2,i,j)/h(i,j)
+            v(i,j) = q(3,i,j)/h(i,j)
+        enddo
+    enddo
 
     ! Lat-Long coordinate system in use, check input variables
     if (coordinate_system == 2) then
@@ -115,8 +126,8 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time)
 
                     aux(1,ii,jj) = topo_integral / (dx * dy * aux(2,ii,jj))
             endif
-            if (mtopofiles > 0 .and. test_topography == 0 ) then
-                call transus
+            if (mtopofiles > 0 .and. test_topography == 0 .and. time /= t0 ) then
+                call transus(mbc,mx,my,xlow,ylow,dx,dy,aux,time,q,pbbed,u,v,h)
                 call bed_update
                 aux(1,ii,jj)= zb(ii,jj)
             endif
