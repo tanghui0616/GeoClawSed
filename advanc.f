@@ -5,7 +5,7 @@ c
 c
       use amr_module
       use fixedgrids_module
-      use topo_module, only: topo_finalized
+      !use topo_module, only: topo_finalized
 
       implicit double precision (a-h,o-z)
 
