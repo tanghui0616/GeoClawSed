@@ -1,5 +1,5 @@
 !
-subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux)
+subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time)
 !     ============================================
 !
 !     # set auxiliary arrays
