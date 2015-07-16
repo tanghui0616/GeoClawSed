@@ -116,9 +116,9 @@
         !Real(kind=Prec) ::      Savailable             = 1.0         !  [m]  sediment available to erode or deposit
         !Real(kind=Prec) ::      thick                  = 0.05         !  [m]  toal sediment thickness for each layer
 
-        CHARACTER(120)       ::      limit_method           = 'VanAlbada'                  !  [-]     method to caculate sediment flux.
-        CHARACTER(120)       ::      trim                   = 'soulsby_vanrijn'          !  [-]     method to caculate equibrium sediment concentration.
-        CHARACTER(120)       ::      method                 = 'SVL'                      !  [-]     method to caculate sediment flux.
+        !CHARACTER(120)       ::      limit_method           = 'VanAlbada'                  !  [-]     method to caculate sediment flux.
+        !CHARACTER(120)       ::      trim                   = 'soulsby_vanrijn'          !  [-]     method to caculate equibrium sediment concentration.
+        !CHARACTER(120)       ::      method                 = 'SVL'                      !  [-]     method to caculate sediment flux.
 
 
 
@@ -145,7 +145,7 @@
         Real(kind=Prec),dimension(:),allocatable ::      sedcal                 != 0          !  [-] Sediment transport calibration coefficient per grain         gmax
         Real(kind=Prec),dimension(:),allocatable ::      indx                   != 0          !  [-]  indicate the water runup jmax
         Real(kind=Prec),dimension(:),allocatable ::      dz                     != 0          !  [-]     bed gradient for one location           lmax
-        Real(kind=Prec),dimension(:,:),allocatable ::    h                      != 0          !  [m]          water depth                        imax:jmax
+        !Real(kind=Prec),dimension(:,:),allocatable ::    h                      != 0          !  [m]          water depth                        imax:jmax
         Real(kind=Prec),dimension(:,:),allocatable ::    zs                     != 0          !  [m]          water level                        imax:jmax
         Real(kind=Prec),dimension(:,:),allocatable ::    z0bed                  != 0          !  [m]          hard structure location                        imax:jmax
         Real(kind=Prec),dimension(:,:),allocatable ::    dzav                   != 0          !  [m]  total bed level change due to avalanching  imax:jmax
