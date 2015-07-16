@@ -14,7 +14,7 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time)
 
     use geoclaw_module, only: coordinate_system, earth_radius, deg2rad
     use geoclaw_module, only: sea_level
-    use amr_module, only: mcapa, xupper, yupper, xlower, ylower, NEEDS_TO_BE_SET
+    use amr_module, only: mcapa, xupper, yupper, xlower, ylower, t0
 
     use topo_module
 
