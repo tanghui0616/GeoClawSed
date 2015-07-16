@@ -6,6 +6,8 @@
 
         implicit none
 
+        Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ceqbg,ceqsg
+
         contains
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -157,27 +159,47 @@
 
             end subroutine settling_velocity
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! Soulsby-VanRijn Method                                                             !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine sb_vr
-                use sediment_module, only: eps
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            ! Soulsby-VanRijn Method                                                             !
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            subroutine sb_vr(mbc,mx,my,u,v,h)
+
+                use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax
+                use Set_Precision, only: Prec
 
                 implicit none
 
+                ! Arguments
+                integer, intent(in) :: mbc,mx,my
+                real(kind=Pred), intent(in) :: pbbed(1-mbc:mx+mbc,1-mbc:my+mbc,lmax,gmax)
+                real(kind=Pred), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
+
+                !local
+
+                integer, :: i,j,k
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   wet,vmg,urms,urms2,hloc,Cd,Asb,term1,term2
+                Real(kind=Prec),dimension(gmax) :: dster
+                Real(kind=Prec) :: delta,Ass,perc
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Ts,ceq,ceqs,ceqb
+                !output
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Tsg,ceqbg,ceqsg
                 wet = 0.0
 
-                do i = 1, imax
-                    do j = 1, jmax
+                do i = 1-mbc, mx+mbc
+                    do j = 1-mb, my+mbc
                         if (h(i,j)>eps) then
                             wet(i,j) = 1.0
                         endif
                     enddo
                 enddo
+
                 delta = rhos - rho
+
                 do k=1,gmax
                     dster(k)=(delta*g/1e-12)**(1.0/3.0)*D(k)
                 enddo
+
+                urms = 0.0
 
                 vmg  = dsqrt(u**2+v**2)
 
@@ -200,9 +222,10 @@
 
                     Ts(:,:,k) = tsfac*hloc/ws(:,:,k)
                     Tsg(:,:,k) = max(Ts(:,:,k),Tsmin)
+
                     ! drag coefficient
-                    do i = 1, imax
-                        do j = 1, jmax
+                    do i = 1, mx
+                        do j = 1, my
                             Cd(i,j)=(0.40/(log(max(hloc(i,j),10.0*z0(i,j))/z0(i,j))-1.0))**2.0
                         end do
                     end do
@@ -218,16 +241,16 @@
                     !ceqb = 0.0 !initialize ceqb
                     !ceqs = 0.0 !initialize ceqs
 
-                    do j=1,jmax
-                        do i=1,imax
+                    do j=1,my
+                        do i=1,mx
                             if(term1(i,j)>Ub_cr(i,j,k) .and. hloc(i,j)>eps) then
                                 term2(i,j)=(term1(i,j)-Ub_cr(i,j,k))**2.40
                             end if
                             ceq(i,j,k) = (Asb(i,j)+Ass)*term2(i,j)/hloc(i,j)
                         end do
                     end do
-                    do j = 1,jmax
-                        do i = 1,imax
+                    do j = 1,my
+                        do i = 1,mx
                             if(term1(i,j)<Us_cr1(i,j,k)) then
                                 ceqb(i,j,k) = min(ceq(i,j,k),cmax/gmax/2.0)
                                 ceqs(i,j,k) = 0.0
@@ -326,26 +349,37 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This Part is used to calculate Source term for finite volume method                !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine transus(mbc,mx,my,xlow,ylow,dx,dy,aux,time,q,pbbed,u,v,h,dt)
+            subroutine transus(mbc,mx,my,xlow,ylow,dx,dy,time,pbbed,u,v,h,dt)
 
                 use flux
-                use sediment_module, only: trim,gmax,morfac,por,D,thetanum
+                use sediment_module, only: trim,gmax,morfac,por,D,thetanum,cmax,lmax
                 use Set_Precision, only: Prec
 
                 implicit none
 
-                integer, :: i,j,k
+                ! Arguments
+                integer, intent(in) :: mbc,mx,my
+                real(kind=Pred), intent(in) :: xlow,ylow,dx,dy,dt,time
+                real(kind=Pred), intent(in) :: pbbed(1-mbc:mx+mbc,1-mbc:my+mbc,lmax,gmax)
+                real(kind=Pred), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
 
-                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,dcsdy,dcbdy,dcsdx,dcbdx
-                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc,fac,cu,cub,cv,cvb
+                !local
+
+                integer, :: i,j,k
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,dcsdy,dcbdy,dcsdx,dcbdx,hold
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc,fac,ero1,ero2,depo_ex1,depo_ex2, &
+                                cc,ccb
                 Real(kind=Prec) :: exp_ero
+
+                !out
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: cu,cub,cv,cvb,ccg,ccbg,susg,Subg,Svbg,Svsg
 
                 vmag2     = u**2+v**2
                 ! calculate equibrium sediment concentration
                 if (trim=='soulsby_vanrijn') then           ! Soulsby van Rijn
-                    call sb_vr
+                    call sb_vr(mbc,mx,my,u,v,h)
                 elseif (trim=='vanthiel_vanrijn') then       ! Van Thiel de Vries & Reniers 2008
-                    call vt_vr
+                    call vt_vr(mbc,mx,my,u,v,h)
                 end if
                 ! compute reduction factor for sediment sources due to presence of hard layers
                 frc = pbbed(:,:,1,:)
@@ -353,7 +387,7 @@
                     do j= 1,my
                         do i= 1,mx
                             exp_ero = morfac*dt/(1.0-por)*h(i,j)*(ceqsg(i,j,k)*frc(i,j,k)/Tsg(i,j,k) &
-                                    + ceqbg(i,j,k)*frc(i,j,k)/dt)
+                                    + ceqbg(i,j,k)*frc(i,j,k)/dt) !ceqsg, ceqbg from vt_vr or sb_vr
                             fac(i,j,k) =min(1.0,laythick(i,j,1)*frc(i,j,k)/max(tiny(0.0),exp_ero))! what's laythick? TODO
                             !print *, exp_ero
 
@@ -385,12 +419,12 @@
                             dcbdx(i,j)=(sum(ccb(i+1,j,:))-sum(ccb(i,j,:)))/dx
                         enddo
                     enddo
-                    cu(imax,:,:) = cc(imax,:,:)
-                    cub(imax,:,:) = ccb(imax,:,:)
+                    cu(mx:mx+mbc,:,:) = cc(mx:mx+mbc,:,:)
+                    cub(mx:mx+mbc,:,:) = ccb(mx:mx+mbc,:,:)
                     !y-direction
                     if (jmax>0) then
-                        do j=1,jmax
-                            do i=1,imax
+                        do j=1,my
+                            do i=1,mx
                                 if(v(i,j)>0) then
                                     cv(i,j,k)=thetanum*cc(i,j,k)+(1.0-thetanum)*cc(i,min(j+1,my),k)
                                     cvb(i,j,k)=thetanum*ccb(i,j,k)+(1.0-thetanum)*ccb(i,min(j+1,my),k)
@@ -405,16 +439,16 @@
                                 dcbdy(i,j)=(sum(ccb(i,j+1,:))-sum(ccb(i,j,:)))/dy
                             end do
                         end do
-                        cv(:,jmax,:) = cc(:,jmax,:)
-                        cvb(:,jmax,:) = ccb(:,jmax,:)
+                        cv(:,my:my+mbc,:) = cc(:,my:my+mbc,:)
+                        cvb(:,my:my+mbc,:) = ccb(:,my:my+mbc,:)
                     else
                         cv = cc
-                        cvb = ceqbg(:,:,:)
+                        cvb = ceqbg(:,:,:) !TODO
                     endif ! jmax>0
                     call Flux_vector
-                    if (jmax>0) then
-                        do j=1,jmax
-                            do i=1,imax
+                    if (my>0) then
+                        do j=1,my
+                            do i=1,mx
                                 !suspended sediment transport
                                 ero1(i,j,k) = fac(i,j,k)*h(i,j)*ceqsg(i,j,k)*pbbed(i,j,1,k)/Tsg(i,j,k)
                                 cc(i,j,k) = (dt*Tsg(i,j,k))/(dt+Tsg(i,j,k))* &
@@ -435,12 +469,12 @@
                         enddo
                     else
                         j=1
-                        do i=1,imax
+                        do i=1,mx
                             !suspended sediment transport
                             ero1(i,j,k) = fac(i,j,k)*h(i,j)*ceqsg(i,j,k)*pbbed(i,j,1,k)/Tsg(i,j,k)
                             cc(i,j,k) = (dt*Tsg(i,j,k))/(dt+Tsg(i,j,k))* &
-                            (hold(i,j)*cc(i,j,k)/dt -((Sus(i,j,k)*dx-Sus(i-1,j,k)*dx)/(dx*dy)-&
-                            ero1(i,j,k)))
+                                        (hold(i,j)*cc(i,j,k)/dt -((Sus(i,j,k)*dx-Sus(i-1,j,k)*dx)/(dx*dy)-&
+                                        ero1(i,j,k)))
                             cc(i,j,k)=max(cc(i,j,k),0.00)
                             cc(i,j,k)=min(cc(i,j,k),cmax*h(i,j))
                             depo_ex1(i,j,k) = cc(i,j,k)/Tsg(i,j,k)
