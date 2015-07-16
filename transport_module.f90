@@ -3,6 +3,7 @@
         use Set_Precision
         use params
 
+
         implicit none
 
         contains
@@ -160,6 +161,7 @@
 ! Soulsby-VanRijn Method                                                             !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             subroutine sb_vr
+                use sediment_module, only: eps
 
                 implicit none
 
@@ -324,11 +326,19 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This Part is used to calculate Source term for finite volume method                !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine transus
+            subroutine transus(mbc,mx,my,xlow,ylow,dx,dy,aux,time,q,pbbed,u,v,h,dt)
 
                 use flux
+                use sediment_module, only: trim,gmax,morfac,por,D,thetanum
+                use Set_Precision, only: Prec
 
                 implicit none
+
+                integer, :: i,j,k
+
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,dcsdy,dcbdy,dcsdx,dcbdx
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc,fac,cu,cub,cv,cvb
+                Real(kind=Prec) :: exp_ero
 
                 vmag2     = u**2+v**2
                 ! calculate equibrium sediment concentration
@@ -340,31 +350,30 @@
                 ! compute reduction factor for sediment sources due to presence of hard layers
                 frc = pbbed(:,:,1,:)
                 do k = 1,gmax
-                    do j= 1,jmax
-                        do i= 1,imax
+                    do j= 1,my
+                        do i= 1,mx
                             exp_ero = morfac*dt/(1.0-por)*h(i,j)*(ceqsg(i,j,k)*frc(i,j,k)/Tsg(i,j,k) &
                                     + ceqbg(i,j,k)*frc(i,j,k)/dt)
-                            fac(i,j,k) =min(1.0,laythick(i,j,1)*frc(i,j,k)/max(tiny(0.0),exp_ero))
+                            fac(i,j,k) =min(1.0,laythick(i,j,1)*frc(i,j,k)/max(tiny(0.0),exp_ero))! what's laythick? TODO
                             !print *, exp_ero
 
                         enddo
                     enddo
                 enddo
                 ! compute diffusion coefficient
-                !Dc = facDc*(nuh+nuhfac*h*(DR/rho)**(1.0/3.0)) !Todo DR
-                cc = ccg
-                ccb = ccbg
+                cc = ccg !TODO
+                ccb = ccbg !TODO
                 do k = 1,gmax
 
                     if (D(k)>0.002) then
                         print *, "WARNING: Grain size is larger than 2 mm"
                     endif
                     ! x-direction
-                    do j=1,jmax
-                        do i=1,imax-1
+                    do j=1,my
+                        do i=1,mx-1
                             if(u(i,j)>0.0) then
-                                cu(i,j,k)=thetanum*cc(i,j,k)+(1.0-thetanum)*cc(min(i+1,imax),j,k)
-                                cub(i,j,k)=thetanum*ccb(i,j,k)+(1.0-thetanum)*ccb(min(i+1,imax),j,k)
+                                cu(i,j,k)=thetanum*cc(i,j,k)+(1.0-thetanum)*cc(min(i+1,mx),j,k)
+                                cub(i,j,k)=thetanum*ccb(i,j,k)+(1.0-thetanum)*ccb(min(i+1,mx),j,k)
                             elseif(u(i,j)<0.0) then
                                 cu(i,j,k)=thetanum*cc(i+1,j,k)+(1.0-thetanum)*cc(max(i,2),j,k)
                                 cub(i,j,k)=thetanum*ccb(i+1,j,k)+(1.0-thetanum)*ccb(max(i,2),j,k)
@@ -383,8 +392,8 @@
                         do j=1,jmax
                             do i=1,imax
                                 if(v(i,j)>0) then
-                                    cv(i,j,k)=thetanum*cc(i,j,k)+(1.0-thetanum)*cc(i,min(j+1,jmax),k)
-                                    cvb(i,j,k)=thetanum*ccb(i,j,k)+(1.0-thetanum)*ccb(i,min(j+1,jmax),k)
+                                    cv(i,j,k)=thetanum*cc(i,j,k)+(1.0-thetanum)*cc(i,min(j+1,my),k)
+                                    cvb(i,j,k)=thetanum*ccb(i,j,k)+(1.0-thetanum)*ccb(i,min(j+1,my),k)
                                 elseif(v(i,j)<0) then
                                     cv(i,j,k)=thetanum*cc(i,j+1,k)+(1.0-thetanum)*cc(i,max(j,2),k)
                                     cvb(i,j,k)=thetanum*ccb(i,j+1,k)+(1.0-thetanum)*ccb(i,max(j,2),k)
