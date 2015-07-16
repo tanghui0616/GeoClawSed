@@ -14,7 +14,6 @@ c
 
       logical vtime,dumpout/.false./,dumpchk/.false./,rest,dump_final
       dimension dtnew(maxlv), ntogo(maxlv), tlevel(maxlv)
-      integer clock_start, clock_finish, clock_rate
 
 c
 c :::::::::::::::::::::::::::: TICK :::::::::::::::::::::::::::::
@@ -86,7 +85,13 @@ c        if this is a restart, make sure chkpt times start after restart time
 c
 c  ------ start of coarse grid integration loop. ------------------
 c
- 20   if (ncycle .ge. nstop .or. time .ge. tfinal) goto 999
+c 20   if (ncycle .ge. nstop .or. time .ge. tfinal) goto 999
+20    continue
+      if (output_style == 1 .or. output_style == 2) then
+        if (time >= tfinal) goto 999
+      else if (output_style == 3) then
+        if (ncycle >= nstop .or. time >= tfinal) goto 999
+      endif
 
       if (nout .gt. 0) then
           if (nextout  .le. nout) then
@@ -207,10 +212,10 @@ c
           if (rprint) write(outunit,101) lbase
 101       format(8h  level ,i5,32h  stays fixed during regridding )
 
-          call system_clock(clock_start,clock_rate)
+          !call system_clock(clock_start,clock_rate)
           call regrid(nvar,lbase,cut,naux,start_time)
-          call system_clock(clock_finish,clock_rate)
-          timeRegridding = timeRegridding + clock_finish - clock_start
+          !call system_clock(clock_finish,clock_rate)
+          !timeRegridding = timeRegridding + clock_finish - clock_start
 
           call setbestsrc()     ! need at every grid change
 c         call conck(1,nvar,naux,time,rest)
@@ -293,9 +298,8 @@ c                same level goes again. check for ok time step
  106             if ((possk(level)-dtnew(level))/dtnew(level)
      .                .gt. .05)  then
 
-                    write(6,601) level, time
- 601                format(" ***adjusting timestep for level ", i3,
-     &                     " at t = ",d16.6)
+
+                    print *, " ***adjusting timestep for level "
                     print *,"    old ntogo dt",ntogo(level),possk(level)
 
 c                   adjust time steps for this and finer levels
@@ -306,8 +310,7 @@ c                   adjust time steps for this and finer levels
                        kratio(level-1) = ceiling(possk(level-1) /
      .                                           possk(level))
                     endif
-                    print *,"    new ntogo dt ",ntogo(level),
-     &                      possk(level)
+                    print *,"    new ntogo dt ",ntogo(level),possk(level)
                     go to 106
                  endif
                  if (ntogo(level) .gt. 100) then
@@ -324,10 +327,7 @@ c                   adjust time steps for this and finer levels
                  go to 60
               else
                  level = level - 1
-                 call system_clock(clock_start,clock_rate)
                  call update(level,nvar,naux)
-                 call system_clock(clock_finish,clock_rate)
-                 timeUpdating=timeUpdating+clock_finish-clock_start
               endif
           go to 105
 c
@@ -392,6 +392,7 @@ c
 c
 c  # computation is complete to final time or requested number of steps
 c
+      if (output_style == 3) then
        if (ncycle .ge. nstop .and. tfinal .lt. rinfinity) then
 c         # warn the user that calculation finished prematurely
           write(outunit,102) nstop
@@ -399,6 +400,7 @@ c         # warn the user that calculation finished prematurely
   102     format('*** Computation halted after nv(1) = ',i8,
      &           '  steps on coarse grid')
           endif
+        endif
 c
 c  # final output (unless we just did it above)
 c

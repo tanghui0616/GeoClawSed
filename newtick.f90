@@ -148,6 +148,16 @@
                 dtnew(i)  = rinfinity
             enddo
 
+        !     ------------- regridding  time?  ---------
+        !
+        ! check if either
+        !   (i)  this level should have its error estimated before being advanced
+        !   (ii) this level needs to provide boundary values for either of
+        !        next 2 finer levels to have their error estimated.
+        !        this only affects two grid levels higher, occurs because
+        !        previous time step needs boundary vals for giant step.
+        !       no error estimation on finest possible grid level
+        !
 
 
 
