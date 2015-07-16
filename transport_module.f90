@@ -70,18 +70,31 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This Part is used to calculate critical velocity for each grain size classes!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine crtical_velocity1
+            subroutine crtical_velocity1(mbc,mx,my,h)
 
-                !use params
+                use sediment_module, only: rhos,rho,gmax,g,D,hcr,k0,m0
+                use Set_Precision, only: Prec
 
                 implicit none
 
-                call settling_velocity
+                ! argument
+                integer, intent(in) :: mbc,mx,my
+                real(kind=Pred), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc)
+
+                !local
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: hloc
+
+                !output
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ub_c, us_cr1, us_cr2
+
+                call settling_velocity(mbc,mx,my)
+
+                delta  = (rhos-rho)/rho
 
                 hloc = max(h,hcr)
 
-                do i = 1, imax
-                    do j = 1, jmax
+                do i = 1-mbc, mx+mbc
+                    do j = 1-mbc, my+mbc
                         do k = 1, gmax
                             if (D(k) <= 0.0005) then
                                 ub_cr(i,j,k) = 0.19*D(k)**0.1*dlog10(4*hloc(i,j)/D(k))
@@ -100,18 +113,31 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This Part is used to calculate critical velocity for each grain size classes!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine crtical_velocity2
+            subroutine crtical_velocity2(mbc,mx,my,h)
+
+                use sediment_module, only: rhos,rho,gmax,g,D,hcr,Trep,k0,m0
+                use Set_Precision, only: Prec
 
                 implicit none
 
-                call settling_velocity
+                ! argument
+                integer, intent(in) :: mbc,mx,my
+                real(kind=Pred), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc)
+
+                !local
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: hloc
+
+                !output
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ub_c, us_cr1, us_cr2
+
+                call settling_velocity(mbc,mx,my)
 
                 delta  = (rhos-rho)/rho
 
                 hloc = max(h,hcr)
 
-                do i = 1, imax
-                    do j = 1, jmax
+                do i = 1-mbc, mx+mbc
+                    do j = 1-mbc, my+mbc
                         do k = 1, gmax
 
                             if (D(k) <= 0.0005) then
@@ -130,15 +156,29 @@
 ! This Part is used to calculate settling velocity for each grain size classes!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-            subroutine settling_velocity
+            subroutine settling_velocity(mbc,mx,my)
+
+                use sediment_module, only: rhos,rho,gmax,g,D
+                use Set_Precision, only: Prec
 
                 !use params
 
                 implicit none
 
+                ! argument
+                integer, intent(in) :: mbc,mx,my
+
+                !local
+                integer, :: i,j,k
+                Real(kind=Prec) :: delta,Te,vis,Sster,c1,c2,wster
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: C
+                Real(kind=Prec),dimension(gmax) :: w,R,alpha
+                !output
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ws
+
                 delta  = (rhos-rho)/rho
 
-                C = cu+cub+cv+cvb
+                C = ccbg+cc
 
                 do k = 1, gmax
                     Te    = 20.0
@@ -150,8 +190,8 @@
                     w(k) = wster*sqrt((rhos/rho-1.0)*g*D(k))
                     R(k) = w(k)*D(k)/vis
                     alpha(k) = 2.35*(2.0+0.175*R(k)**(3.0/4.0))/(1.0+0.175*R(k)**(3.0/4.0))
-                    do i =1, imax
-                        do j = 1, jmax
+                    do i =1-mbc, mx+mbc
+                        do j = 1-mbc, my+mbc
                             ws(i,j,k) = (1-C(i,j,k))**alpha(k)*w(k)
                         end do
                     end do
@@ -164,7 +204,7 @@
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             subroutine sb_vr(mbc,mx,my,u,v,h)
 
-                use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax
+                use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax,sws
                 use Set_Precision, only: Prec
 
                 implicit none
@@ -209,7 +249,7 @@
 
                 ! calculate threshold velocity Ucr for bedload
 
-                call settling_velocity
+                call settling_velocity(mbc,mx,my)
 
                 call crtical_velocity1
 
@@ -273,23 +313,46 @@
             ! Van Thiel-Van Rijn Method                                                          !
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-            subroutine vt_vr
+            subroutine vt_vr(mbc,mx,my,u,v,h)
+
+                use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax,sws
+                use Set_Precision, only: Prec
 
                 implicit none
 
+                ! Arguments
+                integer, intent(in) :: mbc,mx,my
+                real(kind=Pred), intent(in) :: pbbed(1-mbc:mx+mbc,1-mbc:my+mbc,lmax,gmax)
+                real(kind=Pred), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
+
+                !local
+
+                integer, :: i,j,k
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   wet,vmg,urms,urms2,hloc,Cd,Asb,term1,term2,term3
+                Real(kind=Prec),dimension(gmax) :: dster
+                Real(kind=Prec) :: delta,Ass,perc
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Ts,ceq,ceqs,ceqb
+                !output
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Tsg,ceqbg,ceqsg
+
+
                 wet = 0.0
 
-                do i = 1, imax
-                    do j = 1, jmax
+                do i = 1-mbc, mx+mbc
+                    do j = 1-mb, my+mbc
                         if (h(i,j)>eps) then
                             wet(i,j) = 1.0
                         endif
                     enddo
                 enddo
+
                 delta = rhos - rho
+
                 do k=1,gmax
                     dster(k)=(delta*g/1e-12)**(1.0/3.0)*D(k)
                 enddo
+
+                urms = 0.0
 
                 vmg  = dsqrt(u**2+v**2)
 
@@ -318,8 +381,8 @@
                     !ceqb = 0.0*term1                                                                     !initialize ceqb
                     !ceqs = 0.0*term1 
                     !initialize ceqs
-                    do j=1,jmax
-                        do i=1,imax
+                    do j=1,my
+                        do i=1,mx
                             if(term1(i,j)>Ub_cr(i,j,k) .and. h(i,j)>eps) then
                                 term2(i,j)=(term1(i,j)-Ub_cr(i,j,k))**1.50
                                 term3(i,j)=(term1(i,j)-Ub_cr(i,j,k))**2.40
@@ -327,8 +390,8 @@
                         end do
                     end do
                     ceq(:,:,k) = (Asb*term2+Ass*term3)/hloc
-                    do j = 1,jmax
-                        do i = 1,imax
+                    do j = 1,my
+                        do i = 1,mx
                             if(term1(i,j)<Us_cr1(i,j,k)) then
                                 ceqb(i,j,k) = min(ceq(i,j,k),cmax/gmax/2.0)
                                 ceqs(i,j,k) = 0.0
