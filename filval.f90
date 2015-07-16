@@ -93,7 +93,7 @@ subroutine filval(val, mitot, mjtot, dx, dy, level, time,  mic, &
         if (aux_finalized .lt. 2) then ! coarse topo was at wrong time. redo
            ! no ghost cells on coarse enlarged patch
            auxc(1,:,:) = NEEDS_TO_BE_SET  ! needs signal for setaux, set everywhere
-           call setaux(ng,mic,mjc,xl,yb,dx_coarse,dy_coarse,naux,auxc)
+           call setaux(ng,mic,mjc,xl,yb,dx_coarse,dy_coarse,naux,auxc,time)
         endif
 
         if (aux_finalized < 2) then
@@ -104,7 +104,7 @@ subroutine filval(val, mitot, mjtot, dx, dy, level, time,  mic, &
                 write(6,*) xl,xl2,yb,yb2
                 stop
             endif
-            call setaux(0,mic,mjc,xl,yb,dx_coarse,dy_coarse,naux,auxc)
+            call setaux(0,mic,mjc,xl,yb,dx_coarse,dy_coarse,naux,auxc,time)
         endif
     endif
     call bc2amr(valc,auxc,mic,mjc,nvar,naux,dx_coarse,dy_coarse,level-1,time,xl,xr,yb, &
@@ -138,7 +138,7 @@ subroutine filval(val, mitot, mjtot, dx, dy, level, time,  mic, &
              if (aux_finalized .lt. 2) aux(1,:,:) = NEEDS_TO_BE_SET  ! reset entire aux array since topo moving
                !set remaining aux vals not set by copying from prev existing grids
                call system_clock(clock_start,clock_rate)
-               call setaux(nghost,nx,ny,xleft,ybot,dx,dy,naux,aux)
+               call setaux(nghost,nx,ny,xleft,ybot,dx,dy,naux,aux,time)
                call system_clock(clock_finish,clock_rate)
                thisSetauxTime = thisSetauxTime + clock_finish - clock_start
        else ! either no aux exists, or cant reuse yet  

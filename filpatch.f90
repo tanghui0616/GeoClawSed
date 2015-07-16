@@ -165,7 +165,7 @@ recursive subroutine filrecur(level,num_eqn,valbig,aux,num_aux,t,mx,my, &
             nghost_patch = 0
             call setaux(nghost_patch, mx_coarse, my_coarse, &
                         coarse_rect(1), coarse_rect(3), &
-                        dx_coarse,dy_coarse,num_aux,auxcrse)
+                        dx_coarse,dy_coarse,num_aux,auxcrse,t)
         endif
 
         ! Fill in the edges of the coarse grid

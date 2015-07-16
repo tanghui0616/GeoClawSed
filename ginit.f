@@ -37,7 +37,7 @@ c :::::::::::::::::::::::::::::::::::::::;::::::::::::::::::::
                    alloc(locaux+k-1) = NEEDS_TO_BE_SET ! new system checks this val before setting
                 end do
                 call setaux(nghost,nx,ny,corn1,corn2,hx,hy,
-     &                    naux,alloc(locaux))
+     &                    naux,alloc(locaux),start_time)
               else 
                 locaux = 1
               endif
