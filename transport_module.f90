@@ -530,7 +530,7 @@
                         cvb = ceqbg(:,:,:)
                     endif ! my>0
 
-                    call Flux_vector
+                    call Flux_vector(mbc,mx,my,u,v,h,cc,ccb)
 
                     if (my>0) then
                         do j=1-mbc,my+mbc
