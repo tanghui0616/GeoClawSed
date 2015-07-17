@@ -1,7 +1,7 @@
     module sed
 
-        use Set_Precision
-        use params
+        use Set_Precision, only: Prec
+
 
 
         implicit none
@@ -13,19 +13,38 @@
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! This Part is used to calculate bed roughness                                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine bedrough
+            subroutine bedrough(mcb,mx,my,u,v,h)
+
+                use sediment_module, only: pbbed,hcr,D,g,m0,rhos,rho,gammaWs
+                use Set_Precision, only: Prec
 
                 implicit none
+
+                ! argument
+                integer, intent(in) :: mbc,mx,my
+                real(kind=Pred), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc),u(1-mbc:mx+mbc,1-mbc:my+mbc),&
+                        v(1-mbc:mx+mbc,1-mbc:my+mbc)
+
+                !local
+
+                integer, :: i,j
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,hloc,Dmm,zon,a2,ustarc,ustarcrit, &
+                                taub,taucrit,Tstar,delb,zos
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc
+                Real(kind=Prec) :: a1
+
+                !output
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: z0
 
                 frc = pbbed(:,:,1,:)
                 vmag2 = u**2.0+v**2.0
                 hloc = max(h,hcr)
-                Dmm = meansize(D,frc)
+                Dmm = meansize(D,frc,mx,my,mbc,gmax)
                 zon = Dmm/30.0
                 a1 = 0.68
                 a2 = 0.0204*(log(Dmm*100))**2.0+0.0220*log(Dmm*100)+0.0709
-                do i = 1, imax
-                    do j = 1, jmax
+                do i = 1-mbc, mx+mbc
+                    do j = 1-mbc, my+mbc
                         ustarc(i,j) = sqrt(g*m0**2.0*vmag2(i,j)/((rhos-rho)*Dmm(i,j)*hloc(i,j)**(1.0/3.0)))
                         ustarcrit(i,j) = sqrt(g*m0**2.0*ub_cr(i,j,int(gmax/2.0+1.0))**2.0/((rhos-rho)*Dmm(i,j)&
                             *hloc(i,j)**(1.0/3.0)))
@@ -33,8 +52,8 @@
                 end do
                 taub = rho*ustarc**2.0
                 taucrit=rho*ustarcrit**2.0
-                do i = 1, imax
-                    do j =1, jmax
+                do i = 1-mbc,mx+mbc
+                    do j =1-mbc, my+mbc
                         Tstar(i,j)=taub(i,j)/taucrit(i,j)
                         delb(i,j)=Dmm(i,j)*a1*Tstar(i,j)/(1.0+a2(i,j)*Tstar(i,j))
                     end do
@@ -42,34 +61,37 @@
                 zos = gammaWs*delb
                 z0 = zon+zos
             end subroutine bedrough
-!*******************************************************************
-!
-!
-!This function is used to caculate mean grain size
-!
-!
-!********************************************************************
-            function meansize(D,fr)
+            !*******************************************************************
+            !
+            !
+            !This function is used to caculate mean grain size
+            !
+            !
+            !********************************************************************
+            function meansize(D,fr,mx,my,mbc,gmax)
+
+
 
                 implicit none
 
+                Real(kind=Prec) :: mx,my,mbc,gmax
                 Real(kind=Prec), Dimension(gmax) :: D
-                Real(kind=Prec), Dimension(imax,jmax,gmax) :: fr
-                Real(kind=Prec), Dimension(imax,jmax) :: meansize
+                Real(kind=Prec), Dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: fr
+                Real(kind=Prec), Dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: meansize
 
                 meansize = 0.0
 
-                do i = 1, imax
-                    do j = 1, jmax
+                do i = 1-mbc, mx+mbc
+                    do j = 1-mbc, my+mbc
                         do k = 1, gmax
                             meansize(i,j) = meansize(i,j)+D(k)*fr(i,j,k)
                         end do
                     end do
                 end do
             end function meansize
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! This Part is used to calculate critical velocity for each grain size classes!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            ! This Part is used to calculate critical velocity for each grain size classes!
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             subroutine crtical_velocity1(mbc,mx,my,h)
 
                 use sediment_module, only: rhos,rho,gmax,g,D,hcr,k0,m0
@@ -110,9 +132,9 @@
                 end do
             end subroutine crtical_velocity1
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! This Part is used to calculate critical velocity for each grain size classes!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            ! This Part is used to calculate critical velocity for each grain size classes!
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             subroutine crtical_velocity2(mbc,mx,my,h)
 
                 use sediment_module, only: rhos,rho,gmax,g,D,hcr,Trep,k0,m0
@@ -128,7 +150,7 @@
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: hloc
 
                 !output
-                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ub_c, us_cr1, us_cr2
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ub_cr, us_cr1, us_cr2
 
                 call settling_velocity(mbc,mx,my)
 
@@ -152,9 +174,9 @@
                 end do
             end subroutine crtical_velocity2
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! This Part is used to calculate settling velocity for each grain size classes!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            ! This Part is used to calculate settling velocity for each grain size classes!
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
             subroutine settling_velocity(mbc,mx,my)
 
@@ -251,7 +273,7 @@
 
                 call settling_velocity(mbc,mx,my)
 
-                call crtical_velocity1
+                call crtical_velocity1(mbc,mx,my,h)
 
                 !print *,us_cr2
                 ! bed roughness
@@ -362,9 +384,9 @@
 
                 ! calculate threshold velocity Ucr for bedload
 
-                call settling_velocity
+                call settling_velocity(mbc,mx,my)
 
-                call crtical_velocity2
+                call crtical_velocity2(mbc,mx,my,h)
 
                 do k = 1,gmax
 
@@ -409,13 +431,13 @@
                     end do
                 end do
             end subroutine vt_vr
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! This Part is used to calculate Source term for finite volume method                !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine transus(mbc,mx,my,xlow,ylow,dx,dy,time,pbbed,u,v,h,dt)
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            ! This Part is used to calculate Source term for finite volume method                !
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            subroutine transus(mbc,mx,my,dx,dy,time,u,v,h,dt)
 
                 use flux
-                use sediment_module, only: trim,gmax,morfac,por,D,thetanum,cmax,lmax
+                use sediment_module, only: trim,gmax,morfac,por,D,thetanum,cmax,lmax,pbbed
                 use Set_Precision, only: Prec
 
                 implicit none
@@ -423,7 +445,6 @@
                 ! Arguments
                 integer, intent(in) :: mbc,mx,my
                 real(kind=Pred), intent(in) :: xlow,ylow,dx,dy,dt,time
-                real(kind=Pred), intent(in) :: pbbed(1-mbc:mx+mbc,1-mbc:my+mbc,lmax,gmax)
                 real(kind=Pred), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
 
                 !local
