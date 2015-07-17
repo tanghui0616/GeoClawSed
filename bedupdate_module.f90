@@ -252,6 +252,8 @@
                     endif !jmax = 1
                 endif !t
 
+                aux(1,:,:) = zb
+
                 call avalanch
 
 
@@ -263,7 +265,7 @@
             subroutine avalanch(mbc,mx,my,dx,dy,naux,aux,h)
 
                 use sediment_module, only : avalanching,morfac,gmax,hswitch,eps,wetslp,dryslp,totalthick,&
-                        dzbdt,sedero,totalthick
+                        dzbdt,sedero,dzbed,sedcal,por,pbbed,nd_var,aval !dzbed,sedcal
 
                 IMPLICIT NONE
                 ! argument
@@ -271,12 +273,22 @@
                 real(kind=Prec), intent(in) :: t,dt,dx,dy
                 real(kind=Prec), intent(inout) :: aux(naux,1-mbc:mx+mbc,1-mbc:my+mbc)
                 !local
-                Integer         :: ie,id,jdz,je,jd,i,j
+                Integer         :: ie,id,jdz,je,jd,i,j,k,ndz
                 Real(kind=Prec) :: sdz,dzb,one=1.00,dzmax,dzleft
                 Real(kind=Prec),dimension(gmax) :: edg1,edg2
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: dzbdx,dzbdy,zb,dh
-
+                !
                 zb = aux(1,:,:)
+
+                wet = 0.0
+
+                do i = 1-mbc, mx+mbc
+                    do j = 1-mb, my+mbc
+                        if (h(i,j)>eps) then
+                            wet(i,j) = 1.0
+                        endif
+                    enddo
+                enddo
 
                 if (avalanching==1) then
 
@@ -301,7 +313,7 @@
                                 !decide Maximum bedlevel change due to avalanching
                                 if(max(h(i,j),h(i+1,j))>hswitch+eps) then ! Jaap instead of hh
                                     dzmax=wetslp
-                                    if (i>indx(j)) then ! tricks: seaward of indx (transition from sand to structure) wetslope is set to 0.03; TODO
+                                    if (wet(i,j)==1) then ! tricks: seaward of indx (transition from sand to structure) wetslope is set to 0.03; TODO
                                         dzmax = max(wetslp,abs(dzbdx(i,j))*0.990)
                                     endif
                                 else
@@ -369,18 +381,18 @@
                                             nd_var = maxval(totalnum)
                                         enddo
                                         ! update water levels and dzav
-                                        zs(ie,j)  = zs(ie,j)-dzavt
-                                        dzav(ie,j)= dzav(ie,j)-dzavt
-                                        zs(id,j)  = zs(id,j)+dzavt
-                                        dzav(id,j)= dzav(id,j)+dzavt
+                                        h(ie,j)  = h(ie,j)-dzavt
+                                        dh(ie,j)= dh(ie,j)-dzavt
+                                        h(id,j)  = h(id,j)+dzavt
+                                        dh(id,j)= dh(id,j)+dzavt
                                     end if ! yes/no multiple fractions
                                 end if !dzmax
                             end do !jmax
                         end do !imax
                         !JJ: update y slopes after avalanching in X-direction seems more appropriat
 
-                        do j=1,jmax-1 !
-                            do i=1,imax
+                        do j=1-mbc,my+mbc-1 !
+                            do i=1-mbc,mx+mbc
                                 if(max(h(i,j),h(i,j+1))>hswitch+eps) then
                                     dzmax=wetslp
                                 else
@@ -412,10 +424,10 @@
                                         sedero(i,je) = sedero(i,je)-dzleft
                                         totalthick(i,jd) = max(0.0,totalthick(i,jd)+dzleft)
                                         totalthick(i,je) = max(0.0,totalthick(i,je)-dzleft)
-                                        zs(i,jd)  = zs(i,jd)+dzleft
-                                        zs(i,je)  = zs(i,je)-dzleft
-                                        dzav(i,jd)= dzav(i,jd)+dzleft
-                                        dzav(i,je)= dzav(i,je)-dzleft
+                                        h(i,jd)  = h(i,jd)+dzleft
+                                        h(i,je)  = h(i,je)-dzleft
+                                        dh(i,jd)= dh(i,jd)+dzleft
+                                        dh(i,je)= dh(i,je)-dzleft
                                     else ! multiple fractions...\
 
                                         ! figure out how many depth layers (ndz) are affected
@@ -440,21 +452,16 @@
                                             enddo
                                             dzavt = dzavt + sum(edg2)*dt/(1.0-por)
                                             nd_var = totalnum(i,je)
-                                            !print *,i,je
-                                            !print *,dzbed(i,je,:)
-                                            !print *, pbbed(i,je,:,:)
-                                            !print *,edg2
-                                            !print *,dzt
                                             call update_fractions(i,je,dzbed(i,je,:),pbbed(i,je,:,:),edg2,dzavt)           ! upwind point
                                             nd_var = totalnum(i,jd)
                                             call update_fractions(i,jd,dzbed(i,jd,:),pbbed(i,jd,:,:),edg1,-dzavt)    ! downwind point
                                             nd_var = maxval(totalnum)
                                         enddo
                                         ! update water levels and dzav
-                                        zs(i,je)  = zs(i,je)-dzavt
-                                        dzav(i,je)= dzav(i,je)-dzavt
-                                        zs(i,jd)  = zs(i,jd)+dzavt
-                                        dzav(i,jd)= dzav(i,jd)+dzavt
+                                        h(i,je)  = h(i,je)-dzavt
+                                        dh(i,je)= dh(i,je)-dzavt
+                                        h(i,jd)  = h(i,jd)+dzavt
+                                        dh(i,jd)= dh(i,jd)+dzavt
                                     endif !yes/no multiple fractions
                                 end if !dzmax
                             end do !imax
