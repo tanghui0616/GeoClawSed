@@ -19,11 +19,10 @@
         ! Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307     !
         ! USA                                                                     !
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        module morphevolution
+        module bedupdate_module
 
-            use Set_precision
-            use params
-            use sed
+            use Set_precision, only: Prec
+            use transport_module, only: vt_vr,sb_vr,transus
             use update
 
             IMPLICIT NONE
@@ -34,11 +33,29 @@
             !This part is used for containting the bed updating part                                    !
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-            subroutine bed_update
+            subroutine bed_update(mbc,mx,my,t,dt,dx,dy,h,aux,naux)
 
-                use params
-
+                use sediment_module, only : morstart,morfac,struct,gmax,sourcesink,por,dzbdt,sedero,totalthick, & !dzbdt add to sediment_module
+                                    thick,totalnum,toler,nd_var
                 IMPLICIT NONE
+
+                ! argument
+                integer, intent(in) :: mbc,mx,my,naux
+                real(kind=Prec), intent(in) :: time,t,dt,dx,dy
+                real(kind=Prec), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc)
+                real(kind=Prec), intent(inout) :: aux(naux,1-mbc:mx+mbc,1-mbc:my+mbc)
+
+                !local
+                integer, :: i,j,k
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: zb
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: indSus, indSub,indSvs,indSvb,Sout,fre, &
+                                        dzg,edg
+
+                Real(kind=Prec) :: Savailable
+
+                zb = aux(1,:,:)
+
+                call transus(mbc,mx,my,dx,dy,time,u,v,h,dt)
 
                 dzbdt  = 0.0
                 !print *, pbbed
@@ -52,8 +69,8 @@
                         indSvb = 0
                         Sout   = 0.0
                         do k = 1,gmax
-                            do j=1,jmax
-                                do i=2,imax
+                            do j=1-mbc,my+mbc
+                                do i=2,mx+mbc
                                     ! fluxes at i,j
                                     if (Subg(i,j,k) > 0.0) then      ! bed load x-direction
                                         indSub(i,j,k) = 1
@@ -76,9 +93,9 @@
                                     endif !sourcesink==0
                                 enddo! imax
                             enddo! jmax
-                            if (jmax>0) then
-                                do j=2,jmax
-                                    do i=1,imax
+                            if (my>0) then
+                                do j=2,my+mbc
+                                    do i=1-mbc,mx+mbc
                                         if (Svbg(i,j,k) > 0.0 ) then     ! bed load y-direction
                                             indSvb(i,j,k) = 1
                                             Sout(i,j,k) = Sout(i,j,k) + Svbg(i,j,k)*dy
@@ -101,13 +118,13 @@
                                 enddo !jmax
                             endif !jmax>0
                             ! reduce the sediment flux/ transport due to hard structure layers
-                            do j=1,jmax
-                                do i=1,imax
+                            do j=1-mbc,my+mbc
+                                do i=1-mbc,mx+mbc
                                     ! reduction factor for cell outgoing sediment transports
                                     Savailable = laythick(i,j,1)*pbbed(i,j,1,k)/morfac/dt*(1.0-por)*dx*dy
                                     fre(i,j,k)  = min(1.0,Savailable/max(Sout(i,j,k),tiny(0.0)) )
                                 enddo
-                                do i=1,imax
+                                do i=1-mbc,mx+mbc
                                     ! fix sediment transports for the presence of a hard layer; remind indSus etc are 1 in cases of cell outgoing transports
                                         ! updated S         all outgoing transports                  cell incoming transports
                                     if (fre(i,j,k) < 1.0)then
@@ -115,7 +132,7 @@
                                                         + (1-indSub(i,j,k))*Subg(i,j,k)
                                         Subg(i-1,j,k) = fre(i-1,j,k)*(1-indSub(i-1,j,k))*Subg(i-1,j,k) &
                                                         + indSub(i-1,j,k)*Subg(i-1,j,k)
-                                        if (jmax>0) then
+                                        if (my>0) then
                                             Svbg(i,j,k)   = fre(i,j,k)*indSvb(i,j,k)*Svbg(i,j,k) &
                                                         + (1-indSvb(i,j,k))*Svbg(i,j,k)
                                             Svbg(i,j-1,k) = fre(i,j-1,k)*(1-indSvb(i,j-1,k))*Svbg(i,j-1,k) &
@@ -126,7 +143,7 @@
                                                         + (1-indSus(i,j,k))*Susg(i,j,k)
                                             Susg(i-1,j,k) = fre(i-1,j,k)*(1-indSus(i-1,j,k))*Susg(i-1,j,k) &
                                                         + indSus(i-1,j,k)*Susg(i-1,j,k)
-                                            if (jmax>0) then
+                                            if (my>0) then
                                                 Svsg(i,j,k)   = fre(i,j,k)*indSvs(i,j,k)*Svsg(i,j,k) &
                                                         + (1-indSvs(i,j,k))*Svsg(i,j,k)
                                                 Svsg(i,j-1,k) = fre(i,j,k)*(1-indSvs(i,j-1,k))*Svsg(i,j-1,k) &
@@ -138,9 +155,14 @@
                             enddo !jmax
                         enddo !gmax
                     endif !struct == 1
-                    if (jmax>0) then
-                        do j=1,jmax
-                            do i=1,imax
+                    if (trim=='soulsby_vanrijn') then           ! Soulsby van Rijn
+                        call sb_vr(mbc,mx,my,u,v,h)
+                    elseif (trim=='vanthiel_vanrijn') then       ! Van Thiel de Vries & Reniers 2008
+                        call vt_vr(mbc,mx,my,u,v,h)
+                    end if
+                    if (my>0) then
+                        do j=1-mbc,my+mbc
+                            do i=1-mbc,mx+mbc
                                 !print *, i,j
                                 !print *, dzbed(i,j,:)
                             ! bed level changes per fraction in this morphological time step in meters sand including pores
@@ -154,14 +176,14 @@
                                         Subg(i,j,:)*dx*h(i,j)-Subg(i-1,j,:)*dx*h(i-1,j) +&
                                         Svbg(i,j,:)*dy*h(i,j)-Svbg(i,j-1,:)*dy*h(i,j-1)  +&
                                         !source term
-                                        (cu(i,j,:)+cv(i,j,:)+cub(i,j,:)+cvb(i,j,:)-ceqs(i,j,:)-ceqb(i,j,:))*h(i,j)/Tsg(i,j,:))
+                                        (cu(i,j,:)+cv(i,j,:)+cub(i,j,:)+cvb(i,j,:)-ceqsg(i,j,:)-ceqbg(i,j,:))*h(i,j)/Tsg(i,j,:))
                                 elseif (sourcesink==1) then
                                     dzg(i,j,:)=morfac*dt/(1.0-por)*( &
                                         ! dz from sus transport gradients
                                         Susg(i,j,:)*dx*h(i,j)-Susg(i-1,j,:)*dx*h(i-1,j) +&
                                         Svsg(i,j,:)*dy*h(i,j)-Svsg(i,j-1,:)*dy*h(i,j-1) +&
                                         !source term
-                                        (cu(i,j,:)+cv(i,j,:)-ceqs(i,j,:))*h(i,j)/Tsg(i,j,:))
+                                        (cu(i,j,:)+cv(i,j,:)-ceqsg(i,j,:))*h(i,j)/Tsg(i,j,:))
                                 endif
                                 if (gmax==1) then ! Simple bed update in case one fraction
                                     zb(i,j) = zb(i,j)-sum(dzg(i,j,:))
@@ -180,24 +202,16 @@
                                         totalnum(i,j) = totalnum(i,j) - 1
                                     endif
                                     nd_var = totalnum(i,j)
-                                    !print *, i,j
-                                    !print *, dzbed(i,j,:)
-                                    !print *, pbbed(i,j,:,:)
-                                    !print *, edg(i,j,:)
-                                    !print *, sum(dzg(i,j,:))
-                                    !print *, nd_var
+
                                     call update_fractions(i,j,dzbed(i,j,:),pbbed(i,j,:,:),edg(i,j,:),sum(dzg(i,j,:)))
-                                    !nd_var = maxval(totalnum)
-                                    !print *, "**************************************************"
-                                    !print *, dzbed(i,j,:)
-                                    !print *, pbbed(i,j,:,:)
+
 
                                 endif
                             enddo ! imax+1
                         enddo ! jmax+1
                     else
                         j=1
-                        do i=1,imax
+                        do i=1-mbc,mx+mbc
                             ! bed level changes per fraction in this morphological time step in meters sand including pores
                             ! positive in case of erosion
                             if (sourcesink==0) then
@@ -207,13 +221,13 @@
                                     ! dz from bed load transport gradients
                                     Subg(i,j,:)*dx*h(i,j)-Subg(i-1,j,:)*dx*h(i-1,j) +&
                                     !source term
-                                    (cu(i,j,:)+cub(i,j,:)-ceqs(i,j,:)-ceqb(i,j,:))*h(i,j)/Tsg(i,j,:))
+                                    (cu(i,j,:)+cub(i,j,:)-ceqsg(i,j,:)-ceqbg(i,j,:))*h(i,j)/Tsg(i,j,:))
                             elseif (sourcesink==1) then
                                 dzg(i,j,:)=morfac*dt/(1.0-por)*( &
                                     ! dz from sus transport gradients
                                     Susg(i,j,:)*dx*h(i,j)-Susg(i-1,j,:)*dx*h(i-1,j) +&
                                     !source term
-                                    (cu(i,j,:)-ceqs(i,j,:))*h(i,j)/Tsg(i,j,:))
+                                    (cu(i,j,:)-ceqsg(i,j,:))*h(i,j)/Tsg(i,j,:))
                             endif
                             if (gmax==1) then ! Simple bed update in case one fraction
                                 zb(i,j) = zb(i,j)-sum(dzg(i,j,:))
@@ -237,27 +251,32 @@
                         enddo ! imax
                     endif !jmax = 1
                 endif !t
-                !print *, zb
-                !print *, pbbed(:,:,1,1)
+
                 call avalanch
-                !print *, zb
-                !print *, pbbed(:,:,1,1)
+
 
             end subroutine bed_update
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! This part is designed for avanlanching scheme
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine avalanch
+            subroutine avalanch(mbc,mx,my,dx,dy,naux,aux,h)
 
-                use params
+                use sediment_module, only : avalanching,morfac,gmax,hswitch,eps,wetslp,dryslp,totalthick,&
+                        dzbdt,sedero,totalthick
 
                 IMPLICIT NONE
-
-                Integer         :: ie,id,jdz,je,jd
-                Real(kind=Prec) :: sdz,dzb,one=1.00
+                ! argument
+                integer, intent(in) :: mbc,mx,my,naux
+                real(kind=Prec), intent(in) :: t,dt,dx,dy
+                real(kind=Prec), intent(inout) :: aux(naux,1-mbc:mx+mbc,1-mbc:my+mbc)
+                !local
+                Integer         :: ie,id,jdz,je,jd,i,j
+                Real(kind=Prec) :: sdz,dzb,one=1.00,dzmax,dzleft
                 Real(kind=Prec),dimension(gmax) :: edg1,edg2
-                !Real(kind=Prec),dimension(gmax,lmax) :: pb
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: dzbdx,dzbdy,zb,dh
+
+                zb = aux(1,:,:)
 
                 if (avalanching==1) then
 
@@ -265,21 +284,20 @@
                         aval=.false.
                         dzbdx=0.0
                         dzbdy=0.0
-                        do j=1,jmax
-                            do i=1,imax-1
+                        do j=1-mbc,my+mbc
+                            do i=1-mbc,mx+mbc-1
                                 dzbdx(i,j)=(zb(i+1,j)-zb(i,j))/dx
                             enddo
                         enddo
-                        do j=1,jmax-1
-                            do i=1,imax
+                        do j=1-mbc,my+mbc-1
+                            do i=1-mbc,mx+mbc
                                 dzbdy(i,j)=(zb(i,j+1)-zb(i,j))/dy
                             enddo
                         enddo
-                        !print *, dzbdx
-                        !print *, dzbdy
-                        indx = imax+1
-                        do i=1,imax-1
-                            do j=1,jmax
+
+                        indx = mx+1
+                        do i=1-mbc,mx+mbc-1
+                            do j=1-mbc,my+mbc
                                 !decide Maximum bedlevel change due to avalanching
                                 if(max(h(i,j),h(i+1,j))>hswitch+eps) then ! Jaap instead of hh
                                     dzmax=wetslp
@@ -314,10 +332,10 @@
                                         sedero(ie,j) = sedero(ie,j)-dzleft
                                         totalthick(id,j) = max(0.0,totalthick(id,j)+dzleft)
                                         totalthick(ie,j) = max(0.0,totalthick(ie,j)-dzleft)
-                                        zs(id,j)  = zs(id,j)+dzleft
-                                        zs(ie,j)  = zs(ie,j)-dzleft
-                                        dzav(id,j)= dzav(id,j)+dzleft
-                                        dzav(ie,j)= dzav(ie,j)-dzleft
+                                        h(id,j)  = h(id,j)+dzleft
+                                        h(ie,j)  = h(ie,j)-dzleft
+                                        dh(id,j)= dzav(id,j)+dzleft
+                                        dh(ie,j)= dzav(ie,j)-dzleft
                                     else ! multiple fractions...
 
                                         ! now fix fractions....
@@ -344,11 +362,7 @@
                                             enddo
                                             dzavt = dzavt + sum(edg2)*dt/(1.0-por)
                                             nd_var = totalnum(ie,j)
-                                            !print *,ie,j
-                                            !print *,dzbed(ie,j,:)
-                                            !print *,pbbed(ie,j,:,:)
-                                            !print *,edg2
-                                            !print *,dzavt
+
                                             call update_fractions(ie,j,dzbed(ie,j,:),pbbed(ie,j,:,:),edg2,dzavt)! update bed in eroding point
                                             nd_var = totalnum(id,j)
                                             call update_fractions(id,j,dzbed(id,j,:),pbbed(id,j,:,:),edg1,-dzavt) ! update bed in deposition point
@@ -451,7 +465,7 @@
             end subroutine avalanch
 
 
-        end module morphevolution
+        end module bedupdate_module
 
 
 
