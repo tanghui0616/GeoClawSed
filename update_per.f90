@@ -21,28 +21,32 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     module update
 
-        use Set_precision
-        use params
-        use sed
+        use Set_precision, only: Prec
+        !use sed
 
         IMPLICIT NONE
 
         contains
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! This Part is used for updating the grain size distribution for each cell
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        subroutine update_fractions(is,js,dzs,pbs,edgs,dzbs)
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! This Part is used for updating the grain size distribution for each cell
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        subroutine update_fractions(is,js,dzs,pbs,edgs,dzbs,dt)
 
-            use params
+            use sediment_module, only: lmax,gmax,z0bed,zb,dzbdt,sedero,totalthick,pbbed,dzbed, &
+                                totalnum,por,nd_var,split,merge
+            use Set_precision, only: Prec
 
             IMPLICIT NONE
-            integer                                         :: is,js,jg,jd,ki,mi
-            real(Kind= Prec)                                :: ED,zbold,dzbt,dzb_loc,fc,zero
-            real(Kind= Prec), intent(in)                              :: dzbs
+
+            !Argument
+            integer, intent(in) :: is, js
+            real(Kind= Prec), intent(in)                              :: dzbs,dt
             real(Kind= Prec), dimension(gmax),intent(in)          :: edgs
             real(Kind= Prec) , dimension(lmax),intent(inout)    :: dzs
             real(Kind= Prec) , dimension(lmax,gmax),intent(inout) :: pbs
-
+            !local
+            integer                                         :: jg,jd,ki,mi,nl
+            real(Kind= Prec)                                :: ED,zbold,dzbt,dzb_loc,fc,zero
             real(Kind= Prec) , dimension(:),allocatable,save                :: Ap,b
             real(Kind= Prec) , dimension(:,:),allocatable,save              :: Sm,As
 
