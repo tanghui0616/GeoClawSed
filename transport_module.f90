@@ -1,4 +1,4 @@
-    module sed
+    module tranpsort_module
 
         use Set_Precision, only: Prec
 
@@ -6,14 +6,13 @@
 
         implicit none
 
-        Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ceqbg,ceqsg
 
         contains
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! This Part is used to calculate bed roughness                                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine bedrough(mcb,mx,my,u,v,h)
+            subroutine bedrough(mbc,mx,my,u,v,h)
 
                 use sediment_module, only: pbbed,hcr,D,g,m0,rhos,rho,gammaWs
                 use Set_Precision, only: Prec
@@ -22,7 +21,7 @@
 
                 ! argument
                 integer, intent(in) :: mbc,mx,my
-                real(kind=Pred), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc),u(1-mbc:mx+mbc,1-mbc:my+mbc),&
+                real(kind=Prec), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc),u(1-mbc:mx+mbc,1-mbc:my+mbc),&
                         v(1-mbc:mx+mbc,1-mbc:my+mbc)
 
                 !local
@@ -48,16 +47,16 @@
                         ustarc(i,j) = sqrt(g*m0**2.0*vmag2(i,j)/((rhos-rho)*Dmm(i,j)*hloc(i,j)**(1.0/3.0)))
                         ustarcrit(i,j) = sqrt(g*m0**2.0*ub_cr(i,j,int(gmax/2.0+1.0))**2.0/((rhos-rho)*Dmm(i,j)&
                             *hloc(i,j)**(1.0/3.0)))
-                    end do
-                end do
+                    enddo
+                enddo
                 taub = rho*ustarc**2.0
                 taucrit=rho*ustarcrit**2.0
                 do i = 1-mbc,mx+mbc
                     do j =1-mbc, my+mbc
                         Tstar(i,j)=taub(i,j)/taucrit(i,j)
                         delb(i,j)=Dmm(i,j)*a1*Tstar(i,j)/(1.0+a2(i,j)*Tstar(i,j))
-                    end do
-                end do
+                    enddo
+                enddo
                 zos = gammaWs*delb
                 z0 = zon+zos
             end subroutine bedrough
@@ -78,7 +77,7 @@
                 Real(kind=Prec), Dimension(gmax) :: D
                 Real(kind=Prec), Dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: fr
                 Real(kind=Prec), Dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: meansize
-
+                integer, :: i,j,k
                 meansize = 0.0
 
                 do i = 1-mbc, mx+mbc
@@ -101,13 +100,14 @@
 
                 ! argument
                 integer, intent(in) :: mbc,mx,my
-                real(kind=Pred), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc)
+                real(kind=Prec), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc)
 
                 !local
+                integer, :: i,j,k
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: hloc
-
+                Real(kind=Prec) :: delta
                 !output
-                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ub_c, us_cr1, us_cr2
+                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ub_cr, us_cr1, us_cr2
 
                 call settling_velocity(mbc,mx,my)
 
@@ -127,9 +127,9 @@
                             end if
                             us_cr1(i,j,k) = ws(i,j,k)*sqrt(delta)*hloc(i,j)**(1.0/6.0)/(2.5*k0*sqrt(g)*m0)
                             us_cr2(i,j,k) = ws(i,j,k)*sqrt(delta)*hloc(i,j)**(1.0/6.0)/(1.2*k0*sqrt(g)*m0)
-                        end do
-                    end do
-                end do
+                        enddo
+                    enddo
+                enddo
             end subroutine crtical_velocity1
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -144,11 +144,12 @@
 
                 ! argument
                 integer, intent(in) :: mbc,mx,my
-                real(kind=Pred), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc)
+                real(kind=Prec), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc)
 
                 !local
+                integer, :: i,j,k
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: hloc
-
+                Real(kind=Prec) :: delta
                 !output
                 Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ub_cr, us_cr1, us_cr2
 
@@ -215,9 +216,9 @@
                     do i =1-mbc, mx+mbc
                         do j = 1-mbc, my+mbc
                             ws(i,j,k) = (1-C(i,j,k))**alpha(k)*w(k)
-                        end do
-                    end do
-                end do
+                        enddo
+                    enddo
+                enddo
 
             end subroutine settling_velocity
 
@@ -226,25 +227,25 @@
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             subroutine sb_vr(mbc,mx,my,u,v,h)
 
-                use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax,sws
+                use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax,sws,pbbed
                 use Set_Precision, only: Prec
 
                 implicit none
 
                 ! Arguments
                 integer, intent(in) :: mbc,mx,my
-                real(kind=Pred), intent(in) :: pbbed(1-mbc:mx+mbc,1-mbc:my+mbc,lmax,gmax)
-                real(kind=Pred), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
+                real(kind=Prec), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
 
                 !local
-
                 integer, :: i,j,k
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   wet,vmg,urms,urms2,hloc,Cd,Asb,term1,term2
                 Real(kind=Prec),dimension(gmax) :: dster
                 Real(kind=Prec) :: delta,Ass,perc
                 Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Ts,ceq,ceqs,ceqb
+
                 !output
                 Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Tsg,ceqbg,ceqsg
+
                 wet = 0.0
 
                 do i = 1-mbc, mx+mbc
@@ -278,7 +279,7 @@
                 !print *,us_cr2
                 ! bed roughness
 
-                call bedrough
+                call bedrough(mbc,mx,my,u,v,h)
 
                 do k = 1, gmax
 
@@ -286,8 +287,8 @@
                     Tsg(:,:,k) = max(Ts(:,:,k),Tsmin)
 
                     ! drag coefficient
-                    do i = 1, mx
-                        do j = 1, my
+                    do i = 1-mbc, mx+mbc
+                        do j = 1-mbc, my+mbc
                             Cd(i,j)=(0.40/(log(max(hloc(i,j),10.0*z0(i,j))/z0(i,j))-1.0))**2.0
                         end do
                     end do
@@ -303,16 +304,16 @@
                     !ceqb = 0.0 !initialize ceqb
                     !ceqs = 0.0 !initialize ceqs
 
-                    do j=1,my
-                        do i=1,mx
+                    do j=1-mbc,my+mbc
+                        do i=1-mbc,mx+mbc
                             if(term1(i,j)>Ub_cr(i,j,k) .and. hloc(i,j)>eps) then
                                 term2(i,j)=(term1(i,j)-Ub_cr(i,j,k))**2.40
                             end if
                             ceq(i,j,k) = (Asb(i,j)+Ass)*term2(i,j)/hloc(i,j)
-                        end do
-                    end do
-                    do j = 1,my
-                        do i = 1,mx
+                        enddo
+                    enddo
+                    do j = 1-mbc,my+mbc
+                        do i = 1-mbc,mx+mbc
                             if(term1(i,j)<Us_cr1(i,j,k)) then
                                 ceqb(i,j,k) = min(ceq(i,j,k),cmax/gmax/2.0)
                                 ceqs(i,j,k) = 0.0
@@ -326,9 +327,9 @@
                             end if
                             ceqbg(i,j,k) = ceqb(i,j,k)*wet(i,j)
                             ceqsg(i,j,k) = ceqs(i,j,k)*wet(i,j)
-                        end do
-                    end do
-                end do
+                        enddo
+                    enddo
+                enddo
             end subroutine sb_vr
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -337,15 +338,14 @@
 
             subroutine vt_vr(mbc,mx,my,u,v,h)
 
-                use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax,sws
+                use sediment_module, only: eps,rhos,rho,gmax,g,D,hcr,tsfac,Tsmin,cmax,sws,pbbed
                 use Set_Precision, only: Prec
 
                 implicit none
 
                 ! Arguments
                 integer, intent(in) :: mbc,mx,my
-                real(kind=Pred), intent(in) :: pbbed(1-mbc:mx+mbc,1-mbc:my+mbc,lmax,gmax)
-                real(kind=Pred), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
+                real(kind=Prec), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
 
                 !local
 
@@ -403,17 +403,17 @@
                     !ceqb = 0.0*term1                                                                     !initialize ceqb
                     !ceqs = 0.0*term1 
                     !initialize ceqs
-                    do j=1,my
-                        do i=1,mx
+                    do j=1-mbc,my+mbc
+                        do i=1-mbc,mx+mbc
                             if(term1(i,j)>Ub_cr(i,j,k) .and. h(i,j)>eps) then
                                 term2(i,j)=(term1(i,j)-Ub_cr(i,j,k))**1.50
                                 term3(i,j)=(term1(i,j)-Ub_cr(i,j,k))**2.40
-                            end if
-                        end do
-                    end do
+                            endif
+                        enddo
+                    enddo
                     ceq(:,:,k) = (Asb*term2+Ass*term3)/hloc
-                    do j = 1,my
-                        do i = 1,mx
+                    do j = 1-mbc,my+mbc
+                        do i = 1-mbc,mx+mbc
                             if(term1(i,j)<Us_cr1(i,j,k)) then
                                 ceqb(i,j,k) = min(ceq(i,j,k),cmax/gmax/2.0)
                                 ceqs(i,j,k) = 0.0
@@ -424,33 +424,33 @@
                                 !perc = term1(i,j)/Us_cr2(i,j,k)
                                 ceqb(i,j,k) = Asb(i,j)*term2(i,j)/hloc(i,j)!(1-perc)*min(ceq(i,j,k),cmax/gmax/2.0)
                                 ceqs(i,j,k) = Ass*term3(i,j)/hloc(i,j)!perc*min(ceq(i,j,k),cmax/gmax/2.0)
-                            end if
+                            endif
                             ceqbg(i,j,k) = ceqb(i,j,k)*wet(i,j)
                             ceqsg(i,j,k) = ceqs(i,j,k)*wet(i,j)
-                        end do
-                    end do
-                end do
+                        enddo
+                    enddo
+                enddo
             end subroutine vt_vr
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! This Part is used to calculate Source term for finite volume method                !
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             subroutine transus(mbc,mx,my,dx,dy,time,u,v,h,dt)
 
-                use flux
-                use sediment_module, only: trim,gmax,morfac,por,D,thetanum,cmax,lmax,pbbed
+                use flux, only: Flux_vector
+                use sediment_module, only: trim,gmax,morfac,por,D,thetanum,cmax,lmax,pbbed,laythick
                 use Set_Precision, only: Prec
 
                 implicit none
 
                 ! Arguments
                 integer, intent(in) :: mbc,mx,my
-                real(kind=Pred), intent(in) :: xlow,ylow,dx,dy,dt,time
-                real(kind=Pred), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
+                real(kind=Prec), intent(in) :: dx,dy,dt,time
+                real(kind=Prec), intent(in) ::u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
 
                 !local
 
                 integer, :: i,j,k
-                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,dcsdy,dcbdy,dcsdx,dcbdx,hold
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,dcsdy,dcbdy,dcsdx,dcbdx,hold !hold?
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc,fac,ero1,ero2,depo_ex1,depo_ex2, &
                                 cc,ccb
                 Real(kind=Prec) :: exp_ero
@@ -468,8 +468,8 @@
                 ! compute reduction factor for sediment sources due to presence of hard layers
                 frc = pbbed(:,:,1,:)
                 do k = 1,gmax
-                    do j= 1,my
-                        do i= 1,mx
+                    do j= 1-mbc,my+mbc
+                        do i= 1-mbc,mx+mbc
                             exp_ero = morfac*dt/(1.0-por)*h(i,j)*(ceqsg(i,j,k)*frc(i,j,k)/Tsg(i,j,k) &
                                     + ceqbg(i,j,k)*frc(i,j,k)/dt) !ceqsg, ceqbg from vt_vr or sb_vr
                             fac(i,j,k) =min(1.0,laythick(i,j,1)*frc(i,j,k)/max(tiny(0.0),exp_ero))! what's laythick? TODO
@@ -479,22 +479,22 @@
                     enddo
                 enddo
                 ! compute diffusion coefficient
-                cc = ccg !TODO
-                ccb = ccbg !TODO
+                cc = ccg
+                ccb = ccbg
                 do k = 1,gmax
 
                     if (D(k)>0.002) then
                         print *, "WARNING: Grain size is larger than 2 mm"
                     endif
                     ! x-direction
-                    do j=1,my
-                        do i=1,mx-1
+                    do j=1-mbc,my+mbc
+                        do i=1-mbc,mx+mbc-1
                             if(u(i,j)>0.0) then
-                                cu(i,j,k)=thetanum*cc(i,j,k)+(1.0-thetanum)*cc(min(i+1,mx),j,k)
-                                cub(i,j,k)=thetanum*ccb(i,j,k)+(1.0-thetanum)*ccb(min(i+1,mx),j,k)
+                                cu(i,j,k)=thetanum*cc(i,j,k)+(1.0-thetanum)*cc(min(i+1,mx+mbc),j,k)
+                                cub(i,j,k)=thetanum*ccb(i,j,k)+(1.0-thetanum)*ccb(min(i+1,mx+mbc),j,k)
                             elseif(u(i,j)<0.0) then
-                                cu(i,j,k)=thetanum*cc(i+1,j,k)+(1.0-thetanum)*cc(max(i,2),j,k)
-                                cub(i,j,k)=thetanum*ccb(i+1,j,k)+(1.0-thetanum)*ccb(max(i,2),j,k)
+                                cu(i,j,k)=thetanum*cc(i+1,j,k)+(1.0-thetanum)*cc(max(i,2-mbc),j,k)
+                                cub(i,j,k)=thetanum*ccb(i+1,j,k)+(1.0-thetanum)*ccb(max(i,2-mbc),j,k)
                             else
                                 cu(i,j,k)=0.50*(cc(i,j,k)+cc(i+1,j,k))
                                 cub(i,j,k)=0.50*(ccb(i,j,k)+ccb(i+1,j,k))
@@ -503,18 +503,18 @@
                             dcbdx(i,j)=(sum(ccb(i+1,j,:))-sum(ccb(i,j,:)))/dx
                         enddo
                     enddo
-                    cu(mx:mx+mbc,:,:) = cc(mx:mx+mbc,:,:)
-                    cub(mx:mx+mbc,:,:) = ccb(mx:mx+mbc,:,:)
+                    cu(mx+mbc,:,:) = cc(mx+mbc,:,:)
+                    cub(mx+mbc,:,:) = ccb(mx+mbc,:,:)
                     !y-direction
                     if (jmax>0) then
-                        do j=1,my
-                            do i=1,mx
+                        do j=1-mbc,my+mbc
+                            do i=1-mbc,mx+mbc
                                 if(v(i,j)>0) then
-                                    cv(i,j,k)=thetanum*cc(i,j,k)+(1.0-thetanum)*cc(i,min(j+1,my),k)
-                                    cvb(i,j,k)=thetanum*ccb(i,j,k)+(1.0-thetanum)*ccb(i,min(j+1,my),k)
+                                    cv(i,j,k)=thetanum*cc(i,j,k)+(1.0-thetanum)*cc(i,min(j+1,my+mbc),k)
+                                    cvb(i,j,k)=thetanum*ccb(i,j,k)+(1.0-thetanum)*ccb(i,min(j+1,my+mbc),k)
                                 elseif(v(i,j)<0) then
-                                    cv(i,j,k)=thetanum*cc(i,j+1,k)+(1.0-thetanum)*cc(i,max(j,2),k)
-                                    cvb(i,j,k)=thetanum*ccb(i,j+1,k)+(1.0-thetanum)*ccb(i,max(j,2),k)
+                                    cv(i,j,k)=thetanum*cc(i,j+1,k)+(1.0-thetanum)*cc(i,max(j,2-mbc),k)
+                                    cvb(i,j,k)=thetanum*ccb(i,j+1,k)+(1.0-thetanum)*ccb(i,max(j,2-mbc),k)
                                 else
                                     cv(i,j,k)=0.50*(cc(i,j,k)+cc(i,j+1,k)) !Jaap: cc instead of cv
                                     cvb(i,j,k)=0.50*(ccb(i,j,k)+ccb(i,j+1,k))
@@ -523,16 +523,18 @@
                                 dcbdy(i,j)=(sum(ccb(i,j+1,:))-sum(ccb(i,j,:)))/dy
                             end do
                         end do
-                        cv(:,my:my+mbc,:) = cc(:,my:my+mbc,:)
-                        cvb(:,my:my+mbc,:) = ccb(:,my:my+mbc,:)
+                        cv(:,my+mbc,:) = cc(:,my+mbc,:)
+                        cvb(:,my+mbc,:) = ccb(:,my+mbc,:)
                     else
                         cv = cc
-                        cvb = ceqbg(:,:,:) !TODO
-                    endif ! jmax>0
+                        cvb = ceqbg(:,:,:)
+                    endif ! my>0
+
                     call Flux_vector
+
                     if (my>0) then
-                        do j=1,my
-                            do i=1,mx
+                        do j=1-mbc,my+mbc
+                            do i=1-mbc,mx+mbc
                                 !suspended sediment transport
                                 ero1(i,j,k) = fac(i,j,k)*h(i,j)*ceqsg(i,j,k)*pbbed(i,j,1,k)/Tsg(i,j,k)
                                 cc(i,j,k) = (dt*Tsg(i,j,k))/(dt+Tsg(i,j,k))* &
@@ -553,7 +555,7 @@
                         enddo
                     else
                         j=1
-                        do i=1,mx
+                        do i=1-mbc,mx+mbc
                             !suspended sediment transport
                             ero1(i,j,k) = fac(i,j,k)*h(i,j)*ceqsg(i,j,k)*pbbed(i,j,1,k)/Tsg(i,j,k)
                             cc(i,j,k) = (dt*Tsg(i,j,k))/(dt+Tsg(i,j,k))* &
@@ -583,4 +585,4 @@
                 Svbg = Svb
                 Subg = Sub
             end subroutine transus
-        end module sed
+        end module tranpsort_module
