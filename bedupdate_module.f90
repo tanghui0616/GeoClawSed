@@ -35,7 +35,7 @@
 
             subroutine bed_update(mbc,mx,my,t,dt,dx,dy,h,aux,naux)
 
-                use sediment_module, only : morstart,morfac,struct,gmax,sourcesink,por,dzbdt,sedero,totalthick, & !dzbdt add to sediment_module
+                use sediment_module, only : morstart,morfac,struct,gmax,sourcesink,por,totalthick, & !dzbdt add to sediment_module
                                     thick,totalnum,toler,nd_var
                 IMPLICIT NONE
 
@@ -47,7 +47,7 @@
 
                 !local
                 integer, :: i,j,k
-                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: zb
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: zb,dzbdt,sedero
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: indSus, indSub,indSvs,indSvb,Sout,fre, &
                                         dzg,edg
 
@@ -58,6 +58,7 @@
                 call transus(mbc,mx,my,dx,dy,time,u,v,h,dt)
 
                 dzbdt  = 0.0
+                sedero = 0.0
                 !print *, pbbed
 
                 if (t>=morstart .and. morfac > .9990) then
@@ -197,6 +198,8 @@
                                         if (totalthick(i,j)>totalnum(i,j)*thick) then
                                             totalnum(i,j)=totalnum(i,j)+1
                                         endif
+                                    else
+                                        totalnum(i,j) = 1
                                     endif
                                     if(dzbed(i,j,totalnum(i,j))<toler*thick) then
                                         totalnum(i,j) = totalnum(i,j) - 1
@@ -241,6 +244,8 @@
                                     if (totalthick(i,j)>totalnum(i,j)*thick) then
                                         totalnum(i,j)=totalnum(i,j)+1
                                     endif
+                                else
+                                    totalnum(i,j) = 1
                                 endif
                                 if(dzbed(i,j,totalnum(i,j))<toler*thick) then
                                     totalnum(i,j) = totalnum(i,j) - 1
@@ -265,7 +270,7 @@
             subroutine avalanch(mbc,mx,my,dx,dy,naux,aux,h)
 
                 use sediment_module, only : avalanching,morfac,gmax,hswitch,eps,wetslp,dryslp,totalthick,&
-                        dzbdt,sedero,dzbed,sedcal,por,pbbed,nd_var,aval !dzbed,sedcal
+                        dzbed,por,pbbed,nd_var,aval !dzbed,sedcal
 
                 IMPLICIT NONE
                 ! argument
@@ -276,7 +281,7 @@
                 Integer         :: ie,id,jdz,je,jd,i,j,k,ndz
                 Real(kind=Prec) :: sdz,dzb,one=1.00,dzmax,dzleft
                 Real(kind=Prec),dimension(gmax) :: edg1,edg2
-                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: dzbdx,dzbdy,zb,dh
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: dzbdx,dzbdy,zb,dh,sedero,dzbdt
                 !
                 zb = aux(1,:,:)
 
@@ -369,8 +374,8 @@
                                             dzleft = dzleft-dzt
                                             ! erosion deposition per fraction (upwind or downwind); edg is positive in case of erosion
                                             do k=1,gmax
-                                                edg2(k) =  sedcal(k)*dzt*pbbed(ie,j,jdz,k)*(1.0-por)/dt                ! erosion
-                                                edg1(k) = -sedcal(k)*edg2(k)                                   ! deposition
+                                                edg2(k) =  *dzt*pbbed(ie,j,jdz,k)*(1.0-por)/dt                ! erosion
+                                                edg1(k) = -edg2(k)                                   ! deposition
                                             enddo
                                             dzavt = dzavt + sum(edg2)*dt/(1.0-por)
                                             nd_var = totalnum(ie,j)
@@ -447,8 +452,8 @@
                                             !print *, dzbed(i,je,jdz)
                                             ! erosion deposition per fraction (upwind or downwind); edg is positive in case of erosion
                                             do k=1,gmax
-                                                edg2(k) = sedcal(k)*dzt*pbbed(i,je,jdz,k)*(1.0-por)/dt        ! erosion
-                                                edg1(k) = -sedcal(k)*edg2(k)                            ! deposition
+                                                edg2(k) = dzt*pbbed(i,je,jdz,k)*(1.0-por)/dt        ! erosion
+                                                edg1(k) = -edg2(k)                            ! deposition
                                             enddo
                                             dzavt = dzavt + sum(edg2)*dt/(1.0-por)
                                             nd_var = totalnum(i,je)

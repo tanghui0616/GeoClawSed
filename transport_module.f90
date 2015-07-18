@@ -14,7 +14,7 @@
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             subroutine bedrough(mbc,mx,my,u,v,h)
 
-                use sediment_module, only: pbbed,hcr,D,g,m0,rhos,rho,gammaWs
+                use sediment_module, only: pbbed,hcr,D,g,m0,rhos,rho
                 use Set_Precision, only: Prec
 
                 implicit none
@@ -30,11 +30,12 @@
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   vmag2,hloc,Dmm,zon,a2,ustarc,ustarcrit, &
                                 taub,taucrit,Tstar,delb,zos
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: frc
-                Real(kind=Prec) :: a1
+                Real(kind=Prec) :: a1,gammaWs
 
                 !output
                 Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: z0
 
+                gammaWs = 0.056
                 frc = pbbed(:,:,1,:)
                 vmag2 = u**2.0+v**2.0
                 hloc = max(h,hcr)
@@ -437,7 +438,7 @@
             subroutine transus(mbc,mx,my,dx,dy,time,u,v,h,dt)
 
                 use flux, only: Flux_vector
-                use sediment_module, only: trim,gmax,morfac,por,D,thetanum,cmax,lmax,pbbed,laythick
+                use sediment_module, only: trim,gmax,morfac,por,D,thetanum,cmax,lmax,pbbed,dzbed
                 use Set_Precision, only: Prec
 
                 implicit none
@@ -472,7 +473,7 @@
                         do i= 1-mbc,mx+mbc
                             exp_ero = morfac*dt/(1.0-por)*h(i,j)*(ceqsg(i,j,k)*frc(i,j,k)/Tsg(i,j,k) &
                                     + ceqbg(i,j,k)*frc(i,j,k)/dt) !ceqsg, ceqbg from vt_vr or sb_vr
-                            fac(i,j,k) =min(1.0,laythick(i,j,1)*frc(i,j,k)/max(tiny(0.0),exp_ero))! what's laythick? TODO
+                            fac(i,j,k) =min(1.0,dzbed(i,j,1)*frc(i,j,k)/max(tiny(0.0),exp_ero))! what's laythick? TODO
                             !print *, exp_ero
 
                         enddo

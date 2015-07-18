@@ -52,7 +52,9 @@
         real(kind=Prec), allocatable :: dxsed(:), dysed(:)
         real(kind=Prec), allocatable :: sedtime(:)
         integer, allocatable ::  mxsed(:), mysed(:)
-
+        real(kind=Prec), allocatable :: totalthick(:,:),pbbed(:,:,:)
+        real(kind=Prec), allocatable :: totalnum(:,:)
+        real(kind=Prec), allocatable :: dzbed(:,:)
         integer, allocatable :: i0sed(:), msed(:), msedorder(:)
         integer, allocatable :: minlevelsed(:), maxlevelsed(:), itsedtype(:),ipsedtype(:)
         integer, allocatable :: sedID(:),sed0save(:)
@@ -73,12 +75,12 @@
         ! ========================================================================
         !  Constants and parameter
         ! ========================================================================
-        Real(kind=Prec) ::      rhos,rho,por,cmax,facDc,hcr,thick
-        Integer :: gmax,lmax
+        Real(kind=Prec) ::      rhos,rho,por,cmax,facDc,hcr,thick,nd_var
+        Integer :: gmax,lmax,mgc
         Real(kind=Prec), dimension(:),allocatable :: D
         Real(kind=Prec) ::      g,vis,Te,Trep,eps,k0,k1,m0,tsfac,Tsmin,smax,cf,facDc
         Real(kind=Prec) ::      nuh,nuhfac,gammaWs,a1,hswitch,wetslp,dryslp
-        Integer :: sourcesink,struct,morfac,sws
+        Integer :: sourcesink,struct,morfac,sws,avalanching
         Real(kind=Prec) ::      morstart
         Real(kind=Prec) ::       vareps,split,merge,beta
         CHARACTER(120)  ::      limit_method,trim,method
@@ -100,7 +102,7 @@
 
                 !locals
                 integer, parameter :: iunit = 7,SED_PARM_UNIT=78
-                integer :: i,j,ised,finer_than,rank
+                integer :: i,j,k,ised,finer_than,rank
                 real(kind=Prec) :: area_i,area_j,x_junk,y_junk
                 real(kind=Prec) :: area, area_domain
 
@@ -158,6 +160,7 @@
                     allocate(sedID(mtsedfiles),sedtime(mtsedfiles),sed0save(mtsedfiless))
                     allocate(i0sed0(mtsedfiles),sed0ID(mtsedfiles))
 
+
                     do i=1,mtsedfiles
                         read(iunit,*) sedtfname(i)
                         read(iunit,*) itsedtype(i),minlevelsed(i), maxlevelsed(i), &
@@ -208,14 +211,47 @@
                         sedtime(i) = -huge(1.0)
                         call read_tsed_file(mxsed(i),mysed(i),itsedtype(i),sedtfname(i), &
                             sedtwork(i0sed(i):i0sed(i)+msed(i)-1))
+                        allocate(totalthick(1-mgc:mxsed(i)+mgc,1-mgc:mysed(i)+mgc))
+                        do j = 1, mysed(i)
+                            do k = 1, mxsed(i)
+                                totalthick(i,k) = totalthick_temp(i+k*mysed(i))
+                                if (totalthick(i,k)>thick) then
+                                    totalnum(i,k) = nint(totalthick(i,k)/thick)
+                                    if (totalthick(i,k)>totalnum(i,k)*thick) then
+                                        totalnum(i,k)=totalnum(i,k)+1
+                                        dzbed(i,k,1:totalnum(i,k)-1)= thick
+                                        dzbed(i,k,totalnum(i,k)) =totalthick(i,k)-(totalnum(i,k)-1)*thick
+                                    else
+                                        dzbed(i,k,1:totalnum(i,k)-1)= thick
+                                        dzbed(i,k,totalnum(i,k)) =totalthick(i,k)-(totalnum(i,k)-1)*thick
+                                    endif
+                                else
+                                    totalnum(i,k) = 1
+                                    dzbed(i,k,1) = totalthick(i,k)
+                                endif
+                                if(dzbed(i,j,totalnum(i,j))<toler*thick) then
+                                    totalnum(i,j) = totalnum(i,j) - 1
+                                    dzbed(i,j,totalnum(i,j)) = 0.0
+                                endif
+                            enddo
+                        enddo
                     enddo
+
 
                     do i=1,mpsedfiles
                         sedID(i) = i
                         sedtime(i) = -huge(1.0)
                         call read_psed_file(mxsed(i),mysed(i),ipsedtype(i),sedpfname(i), &
                             sedpwork(i0sed(i):i0sed(i)+msed(i)-1))
+                        allocate(pbbed(1-mgc:mxsed(i)+mgc,1-mgc,mysed(i)+mgc,lmx,gmax))
+                        do j = 1, mysed(i)
+                            do k = 1, mxsed(i)
+                                pbbed(i,k,:) = pbbed_temp(i+k*mysed(i),:)
+                            enddo
+                        enddo
                     enddo
+
+
                     ! Sediment order, which determines theorder to process sediment data
                     !
                     ! The finest one will be given priority in any region
@@ -281,7 +317,7 @@
             !  Read sediment thicness file.
             ! ========================================================================
 
-            subroutine read_tsed_file(mx,my,sed_type,fname,totalthick)
+            subroutine read_tsed_file(mx,my,sed_type,fname,totalthick_temp)
 
                 use geoclaw_module
                 use Set_Precision
@@ -291,7 +327,7 @@
                 ! Arguments
                 integer, intent(in) :: mx,my,sed_type
                 character(len=150), intent(in) :: fname
-                real(kind=Prec), intent(inout) :: totalthick(1:mx*my)
+                real(kind=Prec), intent(inout) :: totalthick_temp(1:mx*my)
 
                 ! Locals
                 integer, parameter :: iunit = 19, miss_unit = 17
@@ -326,7 +362,7 @@
                                 print *,"  File = ",fname
                                 stop
                             else
-                                totalthick(i) = th_temp
+                                totalthick_temp(i) = th_temp
                             endif
                         enddo
 
@@ -348,19 +384,19 @@
                         select case(abs(sed_type))
                             case(2)
                                 do i=1,mx*my
-                                    read(iunit,*) totalthick(i)
-                                    if (totalthick(i) == no_data_value) then
+                                    read(iunit,*) totalthick_temp(i)
+                                    if (totalthick_temp(i) == no_data_value) then
                                         missing = missing + 1
-                                        totalthick(i) = sed_missing
+                                        totalthick_temp(i) = sed_missing
                                     endif
                                 enddo
                             case(3)
                                 do j=1,my
-                                    read(iunit,*) (totalthick((j-1)*mx + i),i=1,mx)
+                                    read(iunit,*) (totalthick_temp((j-1)*mx + i),i=1,mx)
                                     do i=1,mx
-                                        if (totalthick((j-1)*mx + i) == no_data_value) then
+                                        if (totalthick_temp((j-1)*mx + i) == no_data_value) then
                                             missing = missing + 1
-                                            totalthick((j-1)*mx + i) = sed_missing
+                                            totalthick_temp((j-1)*mx + i) = sed_missing
                                         endif
                                     enddo
                                 enddo
@@ -389,7 +425,7 @@
             !  Read sediment grain size distribution file.
             ! ========================================================================
 
-            subroutine read_psed_file(mx,my,sed_type,fname,pbed)
+            subroutine read_psed_file(mx,my,sed_type,fname,pbbed_temp)
 
                 use geoclaw_module
                 use Set_Precision
@@ -399,7 +435,7 @@
                 ! Arguments
                 integer, intent(in) :: mx,my,sed_type
                 character(len=150), intent(in) :: fname
-                real(kind=Prec), intent(inout) :: pbed(1:mx*my,gmax)
+                real(kind=Prec), intent(inout) :: pbbed_temp(1:mx*my,gmax)
 
                 ! Locals
                 integer, parameter :: iunit = 19, miss_unit = 17,punit = 79
@@ -436,7 +472,7 @@
                                 print *,"  File = ",fname
                                 stop
                             else
-                                pbed(i,j,:) = p_temp
+                                pbbed_temp(i,j,:) = p_temp
                             endif
                         enddo
 
@@ -458,22 +494,22 @@
                             select case(abs(sed_type))
                                 case(2)
                                     do i=1,mx*my
-                                        read(punit,*) pbed(i,:)
+                                        read(punit,*) pbbed_temp(i,:)
                                         do j = 1, gmax
-                                            if (pbed(i,j) == no_data_value) then
+                                            if (pbbed_temp(i,j) == no_data_value) then
                                                 missing = missing + 1
-                                                pbed(i,j) = sed_missing
+                                                pbbed_temp(i,j) = sed_missing
                                             endif
                                         enddo
                                     enddo
                                 case(3)
                                     do j=1,my
-                                        read(punit,*) (pbed((j-1)*mx + i,:),i=1,mx)
+                                        read(punit,*) (pbbed_temp((j-1)*mx + i,:),i=1,mx)
                                         do i=1,mx
                                             do j = 1, gmax
-                                                if (pbed((j-1)*mx + i,j) == no_data_value) then
+                                                if (pbbed_temp((j-1)*mx + i,j) == no_data_value) then
                                                     missing = missing + 1
-                                                    pbed((j-1)*mx + i,j) = sed_missing
+                                                    pbbed_temp((j-1)*mx + i,j) = sed_missing
                                                 endif
                                             enddo
                                     enddo
@@ -534,6 +570,7 @@
                 endif
 
                 open(unit=iunit, file=fname, status='unknown',form='formatted')
+
 
                 select case(abs(sed_type))
                     ! ASCII file with 3 columns
@@ -633,8 +670,10 @@
                 read(unit,"(1d16.8)") cmax
                 read(unit,"(1d16.8)") facDc
                 read(unit,"(1d16.8)") thick
+                read(unit,"(1d16.8)") nd_var
                 read(unit,*) gmax
                 read(unit,*) lmax
+                read(unit,*) mgc
                 read(unit,*) hcr
                 if (gmax) then
                     allocate(D(gmax))
@@ -668,6 +707,7 @@
                 read(unit,*) morstart
                 read(unit,*) split
                 read(unit,*) merge
+                read(unit,*) avalanching
                 !algorithm parameter
                 read(unit,*) vareps
                 read(unit,*) k1
@@ -686,8 +726,10 @@
                 write(SED_PARM_UNIT,*) '   Maximum allowed sediment concentration:',cmax
                 write(SED_PARM_UNIT,*) '   Control sediment diffusion coefficient:',facDc
                 write(SED_PARM_UNIT,*) '   Sediment thickness for each layer:' thick
+                write(SED_PARM_UNIT,*) '   Initial active sediment layer:' nd_var
                 write(SED_PARM_UNIT,*) '   Number of Grain size classes:'gmax
                 write(SED_PARM_UNIT,*) '   Number of sediment layers:'lmax
+                write(SED_PARM_UNIT,*) '   Number of ghost cell:'mgc
                 write(SED_PARM_UNIT,*) '   Water depth consider sediment transport:'hrc
                 if (friction_forcing) then
                     write(SEO_PARM_UNIT,*) '   Sediment grain size classes:', D(:)
@@ -710,7 +752,8 @@
                 write(SED_PARM_UNIT,*) '   Critical avalanching slope above water:',dryslp
                 write(SED_PARM_UNIT,*) '   toler for sediment flux limitor:',toler
                 write(SED_PARM_UNIT,*) '    use source-sink terms to calculate bed level change:',sourcesink
-                write(SED_PARM_UNIT,*) '    Include avalanching:',aval
+                write(SED_PARM_UNIT,*) '    have avalanched or not:',aval
+                write(SED_PARM_UNIT,*) '    Include avalanching:',avalanching
                 write(SED_PARM_UNIT,*) '    Switch for hard structures:',struct
                 write(SED_PARM_UNIT,*) '    morphological acceleration factor:',morfac
                 write(SED_PARM_UNIT,*) '    Coefficient determining scheme:',thetanum
