@@ -700,6 +700,7 @@
                 !processes control paramter 
                 read(unit,*) sourcesink
                 read(unit,*) aval
+                read(unit,*) avalanching
                 read(unit,*) struct
                 read(unit,*) morfac
                 read(unit,*) thetanum
@@ -707,7 +708,6 @@
                 read(unit,*) morstart
                 read(unit,*) split
                 read(unit,*) merge
-                read(unit,*) avalanching
                 !algorithm parameter
                 read(unit,*) vareps
                 read(unit,*) k1

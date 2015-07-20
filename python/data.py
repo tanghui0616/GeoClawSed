@@ -311,7 +311,9 @@ class SedimentData(clawpack.clawutil.data.ClawData):
         self.add_attribute('Number_sediment_layers',100)
         self.add_attribute('Number_ghost_cell',2)
         self.add_attribute('Water_depth_consider_sediment',0.01)
+        self.add_attribute('Grainsize',[])
         #Physics parameter
+        self.add_attribute('gravity',9.81)
         self.add_attribute('kinematic_viscosity',1e-7)
         self.add_attribute('Water_temperature',20)
         self.add_attribute('Representative_wave_period')
@@ -328,6 +330,7 @@ class SedimentData(clawpack.clawutil.data.ClawData):
         self.add_attribute('Critical_avalanching_slope_under_water')
         self.add_attribute('Critical_avalanching_slope_above_water')
         self.add_attribute('toler_for_sediment_flux_limitor')
+        #processes control paramter
         self.add_attribute('source-sink_terms')
         self.add_attribute('have_avalanched')
         self.add_attribute('Include_avalanching')
@@ -338,6 +341,7 @@ class SedimentData(clawpack.clawutil.data.ClawData):
         self.add_attribute('Start_time')
         self.add_attribute('Split_threshold')
         self.add_attribute('Merge_threshold')
+        # algorithm parameters
         self.add_attribute('order_accuracy')
         self.add_attribute('fully_upwind')
         self.add_attribute('flux_limiter_method')
@@ -360,6 +364,7 @@ class SedimentData(clawpack.clawutil.data.ClawData):
         self.data_write('Number_ghost_cell')
         self.data_write('Water_depth_consider_sediment')
         #Physics parameter
+        self.data_write('gravity')
         self.data_write('kinematic_viscosity')
         self.data_write('Water_temperature')
         self.data_write('Representative_wave_period')
@@ -376,6 +381,7 @@ class SedimentData(clawpack.clawutil.data.ClawData):
         self.data_write('Critical_avalanching_slope_under_water')
         self.data_write('Critical_avalanching_slope_above_water')
         self.data_write('toler_for_sediment_flux_limitor')
+        #processes control paramter
         self.data_write('source-sink_terms')
         self.data_write('have_avalanched')
         self.data_write('Include_avalanching')
@@ -386,8 +392,10 @@ class SedimentData(clawpack.clawutil.data.ClawData):
         self.data_write('Start_time')
         self.data_write('Split_threshold')
         self.data_write('Merge_threshold')
+        # algorithm parameters
         self.data_write('order_accuracy')
         self.data_write('fully_upwind')
+        #Method control
         self.data_write('flux_limiter_method')
         self.data_write('sediment_concentration_method')
         self.data_write('sediment_flux_method')

@@ -35,7 +35,7 @@ def setrun(claw_pkg='geoclaw'):
     #------------------------------------------------------------------
     # GeoClaw specific parameters:
     #------------------------------------------------------------------
-    rundata = setgeo(rundata)
+    #rundata = setgeo(rundata)
 
     #------------------------------------------------------------------
     # Standard Clawpack parameters to be written to claw.data:
@@ -338,6 +338,10 @@ def setrun(claw_pkg='geoclaw'):
         y = (r + .001) / np.sqrt(2.)
         rundata.gaugedata.gauges.append([gaugeno, x, y, 0., 1e10])
     
+    #------------------------------------------------------------------
+    # GeoClaw specific parameters:
+    #------------------------------------------------------------------
+    rundata = setgeo(rundata)
 
     return rundata
     # end of function setrun
@@ -408,6 +412,64 @@ def setgeo(rundata):
     return rundata
     # end of function setgeo
     # ----------------------
+
+def set_sediment(rundata):
+    data = rundata.sedimentdata
+    # sediment parameters
+    data.Sediment_density = 2650
+    data.Water_density = 1000
+    data.Porosity = 0.45
+    data.Maximum_sediment_concentration = 0.1
+    data.Control_sediment_diffusion_coefficient = 1.0
+    data.Sediment_thickness_for_each_layer = 0.05
+    data.Initial_active_sediment_layer = 5
+    data.Number_Grain_size_classes = 2
+    data.Number_sediment_layers = 100
+    data.Number_ghost_cell = 2
+    data.Water_depth_consider_sediment = 0.01
+    data.Grainsize = [0.0003,0.0003]
+    
+    #Physics parameter
+    data.gravity = 9.81
+    data.kinematic_viscosity = 8.9e-4
+    data.Water_temperature = 20
+    data.Representative_wave_period = 10.0
+    data.Threshold_water_depth = 0.01
+    data.von_kaman_coefficient = 0.41
+    data.mining_coeffcient = 0.3
+    data.Coefficient_source_term = 0.1
+    data.Minimum_adaptation_time = 0.5
+    data.maximum_Shields_parameter = -1.0
+    data.Friction_coefficient_flow = 0.003
+    data.horizontal_background_viscosity = 0.1
+    data.turbulent_horizontal_viscosity = 1.0
+    data.Water_depth_swtich = 0.005
+    data.Critical_avalanching_slope_under_water = 0.03
+    data.Critical_avalanching_slope_above_water = 0.01
+    data.toler_for_sediment_flux_limitor =1e-6
+    
+    #Processes control
+    data.source-sink_terms = 0
+    data.have_avalanched = 'F'
+    data.Include_avalanching = 1
+    data.Switch_for_hard_structures = 1
+    data.morphological_acceleration_factor = 1
+    data.Coefficient_determining_scheme = 1.0
+    data.short_wave = 0.0
+    data.Start_time = 0.0
+    data.Split_threshold = 1.01
+    data.Merge_threshold = 0.01
+    
+    #algorithm parameters
+    data.order_accuracy = 1.0
+    data.fully_upwind = -1.0
+    
+    #Method control
+    data.flux_limiter_method = 'VanAlbada'
+    data.sediment_concentration_method = 'soulsby_vanrijn'
+    data.sediment_flux_method = 'SVL'
+    
+    return data
 
 
 
