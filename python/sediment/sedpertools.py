@@ -9,6 +9,7 @@
         :Functions:
         - per1writer
         - per2writer
+        - per3writer
 
         
         
@@ -22,37 +23,41 @@ import urllib
 import types
 import numpy
 
+# ==============================================================================
+#  Functions
+# ==============================================================================
 def per1writer (outfile,perc,xlower,xupper,ylower,yupper,nxpoints,nypoints,nclasses):
     """
-        Function sed1writer will write out the sediment thickness profile by evaluating the
+        Function per1writer will write out the sediment thickness profile by evaluating the
         function thickness on the grid specified by the other parameters.
         
         Assumes thickness can be called on arrays X,Y produced by numpy.meshgrid.
         
-        Output file is of "sedtype1," which we use to refer to a file with
+        Output file is of "pertype1," which we use to refer to a file with
         (x,y,z) values on each line, progressing from upper left corner across
         rows, then down.
         """
     percentage = Percentage(Per_func=perc)
     percentage.x = numpy.linspace(xlower,xupper,nxpoints)
     percentage.y = numpy.linspace(ylower,yupper,nypoints)
+    percentage.NC = nclasses
     percentage.write(outfile, Per_type=1)
 
 def per2writer (outfile,perc,xlower,xupper,ylower,yupper,nxpoints,nypoints,nclasses):
-    """
-        Function sed1writer will write out the sediment thickness profile by evaluating the
-        function thickness on the grid specified by the other parameters.
-        
-        Assumes thickness can be called on arrays X,Y produced by numpy.meshgrid.
-        
-        Output file is of "sedtype1," which we use to refer to a file with
-        (x,y,z) values on each line, progressing from upper left corner across
-        rows, then down.
-        """
+
     percentage = Percentage(Per_func=perc)
     percentage.x = numpy.linspace(xlower,xupper,nxpoints)
     percentage.y = numpy.linspace(ylower,yupper,nypoints)
+    percentage.NC = nclasses
     percentage.write(outfile, Per_type=2)
+
+def per3writer (outfile,perc,xlower,xupper,ylower,yupper,nxpoints,nypoints,nclasses):
+    
+    percentage = Percentage(Per_func=perc)
+    percentage.x = numpy.linspace(xlower,xupper,nxpoints)
+    percentage.y = numpy.linspace(ylower,yupper,nypoints)
+    percentage.NC = nclasses
+    percentage.write(outfile, Per_type=3)
 
 # ==============================================================================
 #  Percentage class
@@ -71,10 +76,11 @@ class Percentage(object):
         :Examples:
     
         >>> import clawpack.geoclaw.tools as sed
-        >>> sed_file = sed.Sediment('./sed.tt3')
-        >>> sed_file.plot()
+        >>> per_file = per.Sediment('./sed.tt3')
+        >>> per_file.plot()
     
     """
+    # PROPERTIES
     @property
     def per(self):
         r"""A representation of the data as an 1d array."""
@@ -150,6 +156,19 @@ class Percentage(object):
         del self._Y
     
     @property
+    def NC(self):
+        """Classes of sediment"""
+        if self._NC is None:
+            self.NC = read(mask=True)
+        return self._NC
+    @NC.setter
+    def NC(self,value):
+        self._NC = value
+    @NC.deleter
+    def NC(self)
+        del self._NC
+
+    @property
     def extent(self):
         r"""Extent of the Sediment."""
         if self._extent is None:
@@ -189,6 +208,8 @@ class Percentage(object):
                             (begin_delta, end_delta)
                 self._delta = numpy.round(begin_delta[0], 15)
         return self._delta
+                
+    # INITIALIZE
 
     def __init__(self, path=None, per_func=None, per_type=None,unstructured=False):
         """
@@ -212,12 +233,14 @@ class Percentage(object):
         self._X = None
         self._y = None
         self._Y = None
+        self._NC = None
         self._extent = None
         self._delta = None
 
+       self.coordinate_transform = lambda x,y: (x,y)
 
     def generate_2d_percentage(self, mask=True):
-        """Generate a 2d array of the sediment thickness."""
+        """Generate a 2d array of the sediment grainsize distribution."""
     
         # Check to see if we need to generate these
         if self._Per is None:
@@ -238,9 +261,9 @@ class Percentage(object):
                 # See if self._X and self._Y are already computed and use them if
                 # available, otherwise just use self._x and self._y
                 if self._X is not None and self._Y is not None:
-                    new_shape = self._X.shape
+                    new_shape = (self._X.shape[0],self._Y.shape[0],self._NC)
                 else:
-                    new_shape = (self._x.shape[0], self._y.shape[0])
+                    new_shape = (self._x.shape[0], self._y.shape[0],self._NC)
                 # Reshape, note that the mask follows along with the new array
                 self._Per = numpy.reshape(self._per, new_shape)
         
@@ -267,18 +290,18 @@ class Percentage(object):
         
             if self.path is not None:
                 if abs(self.per_type) == 1:
-                # Reading this sed_type should produce the X and Y arrays
+                # Reading this per_type should produce the X and Y arrays
                     self.read(mask=mask)
                 elif abs(self.per_type) in [2,3]:
                     if self._x is None or self._y is None:
-                    # Try to read the data to get these, may not have been done yet
+                        # Try to read the data to get these, may not have been done yet
                         self.read(mask=mask)
-                # Generate arrays
+                        # Generate arrays
                         self._X, self._Y = numpy.meshgrid(self._x, self._y)
-                    else:
-                        raise ValueError("Unrecognized sed_type: %s" % self.sed_type)
+                else:
+                    raise ValueError("Unrecognized per_type: %s" % self.per_type)
         
-            elif self.sed_func is not None:
+            elif self.per_func is not None:
                 if self._x is None or self._y is None:
                     raise ValueError("The x and y arrays must be set to ",
                                  "create 2d coordinate arrays.")
@@ -286,30 +309,30 @@ class Percentage(object):
         
         
             # If masking has been requested try to get the mask first from
-            # self._Sed and then self._sed
+            # self._per and then self._per
             if mask:
                 if self._Per is None:
-                # Check to see if we really need to do anything here
-                if isinstance(self._per, numpy.ma.MaskedArray):
-                    # Try to create self._Z
-                    self.generate_2d_percentage(mask=mask)
+                    # Check to see if we really need to do anything here
+                    if isinstance(self._per, numpy.ma.MaskedArray):
+                        # Try to create self._Per
+                        self.generate_2d_percentage(mask=mask)
             
-            if isinstance(self._Per, numpy.ma.MaskedArray):
-                # Use Th's mask for the X and Y coordinates
-                self._x = numpy.ma.MaskedArray(self._X, mask=self._Per.mask,
+                if isinstance(self._Per, numpy.ma.MaskedArray):
+                        # Use Th's mask for the X and Y coordinates
+                    self._X = numpy.ma.MaskedArray(self._X, mask=self._Per.mask,
                                                copy=False)
-                self._Y = numpy.ma.MaskedArray(self._Y, mask=self._Per.mask,
+                    self._Y = numpy.ma.MaskedArray(self._Y, mask=self._Per.mask,
                                                copy=False)
 
 
 
 
-    def read(self, path=None, sed_type=None, unstructured=False,
+    def read(self, path=None, per_type=None, unstructured=False,
              mask=True, filter_region=None, force=False):
             """Read in the data from the object's *path* attribute.
         
-            Stores the resulting data in one of the sets of *x*, *y*, and *th* or
-            *X*, *Y*, and *Th*.
+            Stores the resulting data in one of the sets of *x*, *y*, and *per* or
+            *X*, *Y*, and *Per*.
         
             :Input:
             - *path* (str)  file to read
@@ -331,107 +354,200 @@ class Percentage(object):
         if unstructured:
                 self.unstructured = unstructured
     
-        if self.Per_type is None:
-            if Per_type is not None:
+        if self.per_type is None:
+            if per_type is not None:
                 self.per_type = per_type
-        else:
+            else:
             # Try to look at suffix for type
-            extension = os.path.splitext(self.path)[1][1:]
-            if extension[:2] == "tt":
-                self.per_type = int(extension[2])
-            elif extension == 'per':
-                self.per_type = 1
-        else:
-            # Default to 1
-            self.sed_type = 1
+                extension = os.path.splitext(self.path)[1][1:]
+                if extension[:2] == "tt":
+                    self.per_type = int(extension[2])
+                elif extension == 'per':
+                    self.per_type = 1
+                else:
+                    # Default to 1
+                    self.per_type = 3
     
         if self.unstructured:
             # Read in the data as series of tuples
             data = numpy.loadtxt(self.path)
             points = []
             values = []
+            self.NC = NC
         
-            # Filter region if requested
-            if filter_region is not None:
-                for coordinate in data:
-                    if filter_region[0] <= coordinate[0] <= filter_region[1]:
-                        if filter_region[2] <= coordinate[1] <= filter_region[3]:
-                            points.append(coordinate[0:2])
-                            values.append(coordinate[2])
-            
-                if len(points) == 0:
-                    raise Exception("No points were found inside requested " \
-                                    + "filter region.")
-            
-                # Cast lists as ndarrays
-                self._x = numpy.array(points[:,0])
-                self._y = numpy.array(points[:,1])
-                self._per = numpy.array(values)
-        
-            else:
-                self._x = data[:,0]
-                self._y = data[:,1]
-                self._per = data[:,2]
+
+            self._x = data[:,0]
+            self._y = data[:,1]
+            self._per = data[:,2:self.NC+1]
     
         else:
             # Data is in one of the GeoClaw supported formats
             if abs(self.per_type) == 1:
                 data = numpy.loadtxt(self.path)
-                N = [0,0]
+                N = [0,0,0]
                 y0 = data[0,1]
                 for (n, y) in enumerate(data[1:,1]):
                     if y != y0:
                         N[1] = n + 1
                         break
+                N[2] = self.NC
                 N[0] = data.shape[0] / N[1]
             
-            self._x = data[:N[1],0]
-            self._y = data[::N[1],1]
-            self._Th = numpy.flipud(data[:,2].reshape(N))
-            self._delta = self.X[0,1] - self.X[0,0]
+                self._x = data[:N[1],0]
+                self._y = data[::N[1],1]
+                self._Per = numpy.flipud(data[:,2:N[3]+1].reshape(N))
+                self._delta = self.X[0,1] - self.X[0,0]
         
-        elif abs(self.sed_type) in [2,3]:
-            # Get header information
-            N = self.read_header()
-            self._x = numpy.linspace(self.extent[0], self.extent[1], N[0])
-            self._y = numpy.linspace(self.extent[2], self.extent[3], N[1])
+            elif abs(self.per_type) in [2,3]:
+                # Get header information
+                N = self.read_header()
+                self._x = numpy.linspace(self.extent[0], self.extent[1], N[0])
+                self._y = numpy.linspace(self.extent[2], self.extent[3], N[1])
             
-            if abs(self.sed_type) == 2:
-                # Data is read in as a single column, reshape it
-                self._Th = numpy.loadtxt(self.path, skiprows=6).reshape(N[1],N[0])
-                self._Th = numpy.flipud(self._Th)
-            elif abs(self.sed_type) == 3:
-                # Data is read in starting at the top right corner
-                self._Th = numpy.flipud(numpy.loadtxt(self.path, skiprows=6))
+                if abs(self.per_type) == 2:
+                    # Data is read in as a single column, reshape it
+                    self._Per = numpy.loadtxt(self.path, skiprows=6).reshape(N[1],N[0],N[3])
+                    self._Per = numpy.flipud(self._Per)
+                elif abs(self.per_type) == 3:
+                    # Data is read in starting at the top right corner
+                    self._Per = numpy.flipud(numpy.loadtxt(self.path, skiprows=6))
             
-            if mask:
-                self._Th = numpy.ma.masked_values(self._Th, self.no_data_value, copy=False)
+                if mask:
+                    self._Per = numpy.ma.masked_values(self._Per, self.no_data_value, copy=False)
         
+            else:
+                raise IOError("Unrecognized per_type: %s" % self.per_type)
+
+
+    def read_header(self):
+    r"""Read in header of sediment file at path.
+        
+        If a value returns numpy.nan then the value was not retrievable.  Note
+        that this routine can read in headers whose values and labels are
+        swapped.
+        
+        """
+    
+        if abs(self.per_type) in [2,3]:
+        
+            # Default values to track errors
+            num_cells = [numpy.nan,numpy.nan,numpy.nan]
+            self._extent = [numpy.nan,numpy.nan,numpy.nan,numpy.nan]
+            self._delta = numpy.nan
+        
+            with open(self.path, 'r') as per_file:
+                # Check to see if we need to flip the header values
+                first_line = per_file.readline()
+            try:
+                num_cells[0] = int(first_line.split()[0])
+            except ValueError:
+                # Assume the header is flipped from what we expect
+                num_cells[0] = int(first_line.split()[-1])
+                value_index = -1
+            else:
+                value_index = 0
+            
+            num_cells[1] = int(per_file.readline().split()[value_index])
+            num_cells[2] = int(per_file.readline().split()[value_index+1])
+            self._extent[0] = float(per_file.readline().split()[value_index])
+            self._extent[2] = float(per_file.readline().split()[value_index])
+            self._delta = float(per_file.readline().split()[value_index])
+            self.no_data_value = float(per_file.readline().split()[value_index])
+            
+            self._extent[1] = self._extent[0] + num_cells[0] * self.delta
+            self._extent[3] = self._extent[2] + num_cells[1] * self.delta
+    
         else:
-            raise IOError("Unrecognized sed_type: %s" % self.sed_type)
+                raise IOError("Cannot read header for per_type %s" % self.per_type)
+    
+        return num_cells
+
+    def write(self, path, no_data_value=None, per_type=None, masked=True):
+        """Write out a Sediment file to path of type *per_type*.
         
-        # Perform region filtering
-        if filter_region is not None:
-            # Find indices of region
-            region_index = [None, None, None, None]
-            region_index[0] = (self.x >= filter_region[0]).nonzero()[0][0]
-            region_index[1] = (self.x <= filter_region[1]).nonzero()[0][-1]
-            region_index[2] = (self.y >= filter_region[2]).nonzero()[0][0]
-            region_index[3] = (self.y <= filter_region[3]).nonzero()[0][-1]
+            Writes out a Sediment file of per type specified with *per_type* or
+            inferred from the output file's extension, defaulting to 3, to path
+            from data in Th.  The rest of the arguments are used to write the header
+            data.
+        
+        """
+    
+        # Determine per type if not specified
+        if per_type is None:
+            if self.per_type is not None:
+                per_type = self.per_type
+            else:
+                # Try to look at suffix for type
+                extension = os.path.splitext(path)[1][1:]
+                if extension[:2] == "tt" or extension[:2] == 'pertype':
+                    per_type = int(extension[2])
+                elif extension == 'per':
+                    per_type = 1
+                else:
+                    # Default to 3
+                    per_type = 3
+    
+        if no_data_value is None:
+            no_data_value = self.no_data_value
+    
+        # Check to see if masks have been applied to sediment, if so use them
+        # if masked is True
+        if isinstance(self.Z, numpy.ma.MaskedArray) and masked:
+            pass
+        else:
+            pass
+    
+        with open(path, 'w') as outfile:
+            if self.unstructured:
+                for (i, per) in enumerate(self.per):
+                    outfile.write("%s %s %s\n" % (self.x[i], self.y[i], per))
+        
+            elif per_type == 1:
+                for j in range(len(self.y)-1, -1, -1):
+                    latitude = self.y[j]
+                    for (i, longitude) in enumerate(self.x):
+                        outfile.write("%s %s %s\n" % (longitude, latitude, self.per[j,i,:]))
+        
+            elif per_type == 2 or per_type == 3:
+                # Write out header
+                outfile.write('%6i                              ncols\n' % self.Per.shape[1])
+                outfile.write('%6i                              nrows\n' % self.Per.shape[0])
+                outfile.write('%6i                              nclasses\n' % self.Per.shape[3])
+                outfile.write('%22.15e              xlower\n' % self.extent[0])
+                outfile.write('%22.15e              ylower\n' % self.extent[2])
+                outfile.write('%22.15e              cellsize\n' % self.delta)
+                outfile.write('%10i                          nodata_value\n' % no_data_value)
             
-            self._x = self._x[region_index[0]:region_index[1]]
-            self._y = self._y[region_index[2]:region_index[3]]
+                masked_Per = isinstance(self.Per, numpy.ma.MaskedArray)
             
-            # Force regeneration of 2d coordinate arrays and extent
-            if self._X is not None or self._Y is not None:
-                del self._X, self._Y
-                self._X = None
-                self._Y = None
-            self._extent = None
-            
-            # Modify Z array as well
-            self._Th = self._Th[region_index[2]:region_index[3],
-                                region_index[0]:region_index[1]]
+            # Write out Sediment data
+                if per_type == 2:
+                    if masked_Per:
+                        Per_filled = numpy.flipud(self.Per.filled())
+                    else:
+                        Per_filled = numpy.flipud(self.Per)
+                    for i in xrange(self.Per.shape[0]):
+                        for j in xrange(self.Per.shape[1]):
+                            outfile.write("%22.15e\n" % Per_filled[i,j,:])
+                    if masked_Per:
+                        del Per_filled
+                elif per_type == 3:
+                    if masked_Per:
+                        Per_flipped = numpy.flipud(self.Per.filled())
+                    else:
+                        Per_flipped = numpy.flipud(self.Per)
+                    for i in xrange(self.Per.shape[0]):
+                        for j in xrange(self.Per.shape[1]):
+                            outfile.write("%22.15e   " % (Per_flipped[i,j]))
+                            outfile.write("\n")
+                    if masked_Per:
+                        del Per_flipped
+        
+            else:
+                raise NotImplemented("Output type %s not implemented." % per_type)
+
+
+
 
 
 
