@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-    """GeoClaw Sediments Tools Module
+    """GeoClaw Sediments thickness Tools Module
     
     Module provides several functions for reading, writing and ploting
     sediments thickness (deposit) files.
@@ -206,7 +206,7 @@ class Sediment(object):
                         "Grid spacing delta not constant, %s != %s." %  \
                         (begin_delta, end_delta)
                 self._delta = numpy.round(begin_delta[0], 15)
-    return self._delta
+        return self._delta
 
     def __init__(self, path=None, sed_func=None, sed_type=None,
              unstructured=False):
@@ -295,7 +295,7 @@ class Sediment(object):
                         # Try to read the data to get these, may not have been done yet
                         self.read(mask=mask)
                     # Generate arrays
-                    self._X, self._Y = numpy.meshgrid(self._x, self._y)
+                        self._X, self._Y = numpy.meshgrid(self._x, self._y)
                     else:
                         raise ValueError("Unrecognized sed_type: %s" % self.sed_type)
         
