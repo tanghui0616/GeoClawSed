@@ -661,7 +661,7 @@
                 if (present(file_name)) then
                     call opendatafile(unit, file_name)
                 else
-                    call opendatafile(unit, 'set_sed.data')
+                    call opendatafile(unit, 'sediment.data')
                 endif
                 ! Sediment parameters
                 read(unit,"(1d16.8)") rhos
