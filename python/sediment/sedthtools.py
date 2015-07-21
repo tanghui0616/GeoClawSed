@@ -23,6 +23,10 @@ import types
 
 import numpy
 
+# ==============================================================================
+#  Functions
+# ==============================================================================
+
 def sed1writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints):
     """
     Function sed1writer will write out the sediment thickness profile by evaluating the
@@ -34,14 +38,13 @@ def sed1writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints):
     (x,y,z) values on each line, progressing from upper left corner across
     rows, then down.
     """
-    sediment = Sediment(Sed_func=thickness)
+    sediment = Sediment(Sed_func=thick)
     sediment.x = numpy.linspace(xlower,xupper,nxpoints)
     sediment.y = numpy.linspace(ylower,yupper,nypoints)
     sediment.write(outfile, sed_type=1)
 
 
-def sed2writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints, \
-                 nodata_value=-99999):
+def sed2writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints):
     """
         Function sed2writer will write out the grainsize distribution profile by evaluating the
         function thickness on the grid specified by the other parameters.
@@ -49,13 +52,12 @@ def sed2writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints, \
         This routine is here for simply creates a new sediment object and writes it out.
     """
     
-    sediment = Sediment(sed_func=thickness)
+    sediment = Sediment(sed_func=thick)
     sediment.x = numpy.linspace(xlower,xupper,nxpoints)
     sediment.y = numpy.linspace(ylower,yupper,nypoints)
     sediment.write(outfile, sed_type=2)
 
-def sed3writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints, \
-                 nodata_value=-99999):
+def sed3writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints):
     """        
         Function sed2writer will write out the grainsize distribution profile by evaluating the
         function thickness on the grid specified by the other parameters.
@@ -64,7 +66,7 @@ def sed3writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints, \
         
     """
     
-    sediment = Sediment(sed_func=thickness)
+    sediment = Sediment(sed_func=thick)
     
     sediment.x = numpy.linspace(xlower,xupper,nxpoints)
     sediment.y = numpy.linspace(ylower,yupper,nypoints)
@@ -88,7 +90,7 @@ class Sediment(object):
         
         :Examples:
         
-        >>> import clawpack.geoclaw.sedtools as sed
+        >>> import clawpack.geoclaw.sedthtools as sed
         >>> sed_file = sed.Sediment('./sed.tt3')
         >>> sed_file.plot()
         
@@ -313,7 +315,7 @@ class Sediment(object):
                     # Check to see if we really need to do anything here
                     if isinstance(self._th, numpy.ma.MaskedArray):
                     # Try to create self._Z
-                        self.generate_2d_sed(mask=mask)
+                        self.generate_2d_thickness(mask=mask)
             
                 if isinstance(self._Th, numpy.ma.MaskedArray):
                     # Use Th's mask for the X and Y coordinates
@@ -436,7 +438,7 @@ class Sediment(object):
                     self._Th = numpy.ma.masked_values(self._Th, self.no_data_value, copy=False)
         
             else:
-                        raise IOError("Unrecognized sed_type: %s" % self.sed_type)
+                raise IOError("Unrecognized sed_type: %s" % self.sed_type)
         
             # Perform region filtering
             if filter_region is not None:
@@ -571,125 +573,28 @@ class Sediment(object):
                 if sed_type == 2:
                     if masked_Th:
                         Th_filled = numpy.flipud(self.Th.filled())
-                else:
-                    Th_filled = numpy.flipud(self.Th)
-                for i in xrange(self.Th.shape[0]):
-                    for j in xrange(self.Th.shape[1]):
-                        outfile.write("%22.15e\n" % Th_filled[i,j])
-                if masked_Th:
-                    del Th_filled
+                    else:
+                        Th_filled = numpy.flipud(self.Th)
+                    for i in xrange(self.Th.shape[0]):
+                        for j in xrange(self.Th.shape[1]):
+                            outfile.write("%22.15e\n" % Th_filled[i,j])
+                    if masked_Th:
+                        del Th_filled
                 elif sed_type == 3:
                     if masked_Th:
-                    Th_flipped = numpy.flipud(self.Th.filled())
-                else:
-                    Th_flipped = numpy.flipud(self.Th)
-                for i in xrange(self.Th.shape[0]):
-                    for j in xrange(self.Th.shape[1]):
-                        outfile.write("%22.15e   " % (Th_flipped[i,j]))
-                    outfile.write("\n")
-                if masked_Th:
-                    del Th_flipped
+                        Th_flipped = numpy.flipud(self.Th.filled())
+                    else:
+                        Th_flipped = numpy.flipud(self.Th)
+                    for i in xrange(self.Th.shape[0]):
+                        for j in xrange(self.Th.shape[1]):
+                            outfile.write("%22.15e   " % (Th_flipped[i,j]))
+                        outfile.write("\n")
+                    if masked_Th:
+                        del Th_flipped
         
-        else:
-            raise NotImplemented("Output type %s not implemented." % sed_type)
+            else:
+                raise NotImplemented("Output type %s not implemented." % sed_type)
 
-    def plot(self, axes=None, region_extent=None, contours=None,
-         coastlines=True, limits=None, cmap=None, add_colorbar=True,
-         fig_kwargs={}):
-        """Plot the Sediment.
-        
-        :Input:
-        - *axes* (matplotlib.pyplot.axes) -
-        - *region_extent* (tuple) -
-        - *contours* (list) -
-        - *coastlines* (bool) -
-        - *limits* (list) -
-        - *cmap* (matplotlib.colors.Colormap) -
-        - *fig_kawargs* (dict) -
-        
-        """
-    
-        import matplotlib.pyplot as plt
-        import clawpack.visclaw.colormaps as colormaps
-    
-        # Create axes if needed
-        if axes is None:
-            fig = plt.figure(**fig_kwargs)
-            axes = fig.add_subplot(111)
-    
-        # Turn off annoying offset
-        axes.ticklabel_format(format="plain", useOffset=False)
-        plt.xticks(rotation=20)
-    
-        # Generate limits if need be
-        if (region_extent is None) and (not self.unstructured):
-            dx = self.x[1] - self.x[0]
-            dy = self.y[1] - self.y[0]
-            x1 = self.x.min() - dx/2
-            x2 = self.x.max() + dx/2
-            y1 = self.y.min() - dy/2
-            y2 = self.y.max() + dy/2
-            region_extent = (x1,x2,y1,y2)
-        mean_lat = 0.5 * (region_extent[3] + region_extent[2])
-        axes.set_aspect(1.0 / numpy.cos(numpy.pi / 180.0 * mean_lat))
-    
-        if limits is None:
-            if self.unstructured:
-                sed_extent = (numpy.min(self.th), numpy.max(self.th))
-            else:
-                sed_extent = (numpy.min(self.Th), numpy.max(self.Th))
-        else:
-            sed_extent = limits
-    
-        # Create color map - assume shore is at z = 0.0
-        if cmap is None:
-            land_cmap = colormaps.make_colormap({ 0.0:[0.1,0.4,0.0],
-                                                0.25:[0.0,1.0,0.0],
-                                                0.5:[0.8,1.0,0.5],
-                                                1.0:[0.8,0.5,0.2]})
-            sea_cmap = plt.get_cmap('Blues_r')
-            if sed_extent[0] > 0.0:
-                cmap = land_cmap
-            elif sed_extent[1] <= 0.0:
-                cmap = sea_cmap
-            else:
-                cmap = colormaps.add_colormaps((land_cmap, sea_cmap),
-                                                data_limits=sed_extent,
-                                                data_break=0.0)
-    
-        # Plot data
-        if self.unstructured:
-            plot = axes.scatter(self.x, self.y, c=self.th, cmap=cmap,
-                                vmin=sed_extent[0],
-                                vmax=sed_extent[1],
-                                marker=',', linewidths=(0.0,))
-        elif contours is not None:
-            plot = axes.contourf(self.X, self.Y, self.Th, contours,cmap=cmap)
-        elif isinstance(self.Th, numpy.ma.MaskedArray):
-            # Adjust coordinates so color pixels centered at X,Y locations
-            plot = axes.pcolor(self.X - dx/2., self.Y - dx/2., self.Th,
-                               vmin=sed_extent[0],
-                               vmax=sed_extent[1],
-                               cmap=cmap)
-        else:
-            plot = axes.imshow(self.Z, vmin=sed_extent[0],
-                               vmax=sed_extent[1],
-                               extent=region_extent,
-                               cmap=cmap,
-                               origin='lower',
-                               interpolation='nearest')
-        cbar = plt.colorbar(plot, ax=axes)
-        cbar.set_label("Sediment Thickness(m)")
-    # levels = range(0,int(-numpy.min(Z)),500)
-    
-    # Plot coastlines
-        if coastlines and not self.unstructured:
-            axes.contour(self.X, self.Y, self.Th, levels=[0.0],colors='r')
-    
-        axes.set_xlim(region_extent[0:2])
-        axes.set_ylim(region_extent[2:])
-    
-        return axes
 
 
 
