@@ -159,7 +159,7 @@ class Percentage(object):
     def NC(self):
         """Classes of sediment"""
         if self._NC is None:
-            self.NC = read(mask=True)
+            self._NC = read(mask=True)
         return self._NC
     @NC.setter
     def NC(self,value):
@@ -448,7 +448,7 @@ class Percentage(object):
                 value_index = 0
             
             num_cells[1] = int(per_file.readline().split()[value_index])
-            num_cells[2] = int(per_file.readline().split()[value_index+1])
+            num_cells[2] = int(per_file.readline().split()[value_index])
             self._extent[0] = float(per_file.readline().split()[value_index])
             self._extent[2] = float(per_file.readline().split()[value_index])
             self._delta = float(per_file.readline().split()[value_index])

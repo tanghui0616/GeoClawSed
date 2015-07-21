@@ -46,9 +46,8 @@ def sed1writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints):
 
 def sed2writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints):
     """
-        Function sed2writer will write out the grainsize distribution profile by evaluating the
+        Function sed2writer will write out the sediment thickness profile by evaluating the
         function thickness on the grid specified by the other parameters.
-        
         This routine is here for simply creates a new sediment object and writes it out.
     """
     
@@ -59,18 +58,15 @@ def sed2writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints):
 
 def sed3writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints):
     """        
-        Function sed2writer will write out the grainsize distribution profile by evaluating the
+        Function sed2writer will write out the sediment thickness profile by evaluating the
         function thickness on the grid specified by the other parameters.
-        
         This routine is here for simply creating a new sediment object and writes it out.
         
     """
     
     sediment = Sediment(sed_func=thick)
-    
     sediment.x = numpy.linspace(xlower,xupper,nxpoints)
     sediment.y = numpy.linspace(ylower,yupper,nypoints)
-    
     sediment.write(outfile, sed_type=3)
 
 # Get sediment data directory maybe not needed in here, not sure now.
@@ -97,7 +93,7 @@ class Sediment(object):
     """
     @property
     def th(self):
-        r"""A representation of the data as an 1d array."""
+        """A representation of the data as an 1d array."""
         if (self._th is None) and self.unstructured:
             self.read(mask=True)
         return self._th
@@ -110,7 +106,7 @@ class Sediment(object):
     
     @property
     def Th(self):
-        r"""A representation of the data as a 2d array."""
+        """A representation of the data as a 2d array."""
         if self._Th is None:
             self.generate_2d_thickness(mask=True)
         return self._Th
@@ -147,7 +143,7 @@ class Sediment(object):
     
     @property
     def y(self):
-        r"""One dimensional coordinate array in y direction."""
+        """One dimensional coordinate array in y direction."""
         if self._y is None:
             self.read(mask=True)
         return self._y
@@ -296,10 +292,10 @@ class Sediment(object):
                     if self._x is None or self._y is None:
                         # Try to read the data to get these, may not have been done yet
                         self.read(mask=mask)
-                    # Generate arrays
+                        # Generate arrays
                         self._X, self._Y = numpy.meshgrid(self._x, self._y)
-                    else:
-                        raise ValueError("Unrecognized sed_type: %s" % self.sed_type)
+                else:
+                    raise ValueError("Unrecognized sed_type: %s" % self.sed_type)
         
             elif self.sed_func is not None:
                 if self._x is None or self._y is None:
@@ -319,7 +315,7 @@ class Sediment(object):
             
                 if isinstance(self._Th, numpy.ma.MaskedArray):
                     # Use Th's mask for the X and Y coordinates
-                    self._x = numpy.ma.MaskedArray(self._X, mask=self._Th.mask,
+                    self._X = numpy.ma.MaskedArray(self._X, mask=self._Th.mask,
                                                copy=False)
                     self._Y = numpy.ma.MaskedArray(self._Y, mask=self._Th.mask,
                                                 copy=False)
@@ -338,7 +334,6 @@ class Sediment(object):
         - *sed_type* (int)
         - *unstructured* (bool)
         - *mask* (bool)
-        - *filter_region* (tuple)
         The first three might have already been set when instatiating object.
         
         """
@@ -352,56 +347,30 @@ class Sediment(object):
     
         if unstructured:
             self.unstructured = unstructured
-    
-        # Check if the path is a URL and fetch data if needed or forced
-        # don't need for sediment file
-        #if "http" in self.path:
-        #        fetch_sed_url(self.path)
-    
-    
+        
         if self.sed_type is None:
             if sed_type is not None:
             self.sed_type = sed_type
-        else:
-            # Try to look at suffix for type
-            extension = os.path.splitext(self.path)[1][1:]
-            if extension[:2] == "tt":
-                self.sed_type = int(extension[2])
-            elif extension == 'sed':
-                self.sed_type = 1
-            elif extension == 'asc':
-                self.sed_type = 3
             else:
-                # Default to 3
-                self.sed_type = 3
+                # Try to look at suffix for type
+                extension = os.path.splitext(self.path)[1][1:]
+                if extension[:2] == "tt":
+                    self.sed_type = int(extension[2])
+                elif extension == 'sed':
+                    self.sed_type = 1
+                elif extension == 'asc':
+                    self.sed_type = 3
+                else:
+                    # Default to 3
+                    self.sed_type = 3
     
         if self.unstructured:
             # Read in the data as series of tuples
             data = numpy.loadtxt(self.path)
-            points = []
-            values = []
-        
-            # Filter region if requested
-            if filter_region is not None:
-                for coordinate in data:
-                    if filter_region[0] <= coordinate[0] <= filter_region[1]:
-                        if filter_region[2] <= coordinate[1] <= filter_region[3]:
-                            points.append(coordinate[0:2])
-                            values.append(coordinate[2])
-            
-                if len(points) == 0:
-                    raise Exception("No points were found inside requested " \
-                                    + "filter region.")
-            
-                # Cast lists as ndarrays
-                self._x = numpy.array(points[:,0])
-                self._y = numpy.array(points[:,1])
-                self._th = numpy.array(values)
-        
-            else:
-                self._x = data[:,0]
-                self._y = data[:,1]
-                self._th = data[:,2]
+
+            self._x = data[:,0]
+            self._y = data[:,1]
+            self._th = data[:,2]
     
         else:
             # Data is in one of the GeoClaw supported formats
@@ -440,28 +409,7 @@ class Sediment(object):
             else:
                 raise IOError("Unrecognized sed_type: %s" % self.sed_type)
         
-            # Perform region filtering
-            if filter_region is not None:
-                # Find indices of region
-                region_index = [None, None, None, None]
-                region_index[0] = (self.x >= filter_region[0]).nonzero()[0][0]
-                region_index[1] = (self.x <= filter_region[1]).nonzero()[0][-1]
-                region_index[2] = (self.y >= filter_region[2]).nonzero()[0][0]
-                region_index[3] = (self.y <= filter_region[3]).nonzero()[0][-1]
-            
-                self._x = self._x[region_index[0]:region_index[1]]
-                self._y = self._y[region_index[2]:region_index[3]]
-            
-                # Force regeneration of 2d coordinate arrays and extent
-                if self._X is not None or self._Y is not None:
-                    del self._X, self._Y
-                    self._X = None
-                    self._Y = None
-                self._extent = None
-            
-                # Modify Z array as well
-                self._Th = self._Th[region_index[2]:region_index[3],
-                              region_index[0]:region_index[1]]
+
 
 
     def read_header(self):
@@ -526,7 +474,7 @@ class Sediment(object):
                 extension = os.path.splitext(path)[1][1:]
                 if extension[:2] == "tt" or extension[:2] == 'sedtype':
                     sed_type = int(extension[2])
-                elif extension == 'xyz':
+                elif extension == 'sed':
                     sed_type = 1
                 else:
                     # Default to 3
