@@ -65,6 +65,7 @@ SOURCES = \
   $(GEOLIB)/flux2fw.f \
   $(GEOLIB)/GeoClawSed/qad.f \
   $(GEOLIB)/valout.f \
+  $(GEOLIB)/GeoClawSed/para.f90 \
   $(GEOLIB)/GeoClawSed/filval.f90 \
   $(GEOLIB)/GeoClawSed/filpatch.f90 \
   $(AMRLIB)/prefilp.f90 \
@@ -74,6 +75,7 @@ SOURCES = \
   $(GEOLIB)/bc2amr.f \
   $(GEOLIB)/update.f \
   $(GEOLIB)/GeoClawSed/setaux.f90 \
+  $(GEOLIB)/GeoClawSed/setauxnew.f90 \
   $(GEOLIB)/flag2refine2.f90  \
   $(GEOLIB)/allowflag.f90  \
   $(AMRLIB)/flagregions2.f90  \
