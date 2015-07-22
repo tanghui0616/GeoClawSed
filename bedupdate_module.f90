@@ -33,29 +33,29 @@
             !This part is used for containting the bed updating part                                    !
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-            subroutine bed_update(mbc,mx,my,t,dt,dx,dy,h,aux,naux)
+            subroutine bed_update(mbc,mx,my,t,dt,dx,dy,u,v,h,aux,naux,)
 
                 use sediment_module, only : morstart,morfac,struct,gmax,sourcesink,por,totalthick, & !dzbdt add to sediment_module
-                                    thick,totalnum,toler,nd_var
+                                    thick,totalnum,toler,nd_var,dzbed
                 IMPLICIT NONE
 
                 ! argument
                 integer, intent(in) :: mbc,mx,my,naux
-                real(kind=Prec), intent(in) :: time,t,dt,dx,dy
-                real(kind=Prec), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc)
+                real(kind=Prec), intent(in) :: t,dt,dx,dy
+                real(kind=Prec), intent(in) :: u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
                 real(kind=Prec), intent(inout) :: aux(naux,1-mbc:mx+mbc,1-mbc:my+mbc)
 
                 !local
                 integer, :: i,j,k
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: zb,dzbdt,sedero
-                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: indSus, indSub,indSvs,indSvb,Sout,fre, &
-                                        dzg,edg
+                integer,dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: indSus,indSub,indSvs,indSvb
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Sout,fre,dzg,edg
 
                 Real(kind=Prec) :: Savailable
 
                 zb = aux(1,:,:)
 
-                call transus(mbc,mx,my,dx,dy,time,u,v,h,dt)
+                call transus(mbc,mx,my,dx,dy,t,u,v,h,dt)
 
                 dzbdt  = 0.0
                 sedero = 0.0
@@ -122,7 +122,7 @@
                             do j=1-mbc,my+mbc
                                 do i=1-mbc,mx+mbc
                                     ! reduction factor for cell outgoing sediment transports
-                                    Savailable = laythick(i,j,1)*pbbed(i,j,1,k)/morfac/dt*(1.0-por)*dx*dy
+                                    Savailable = dzbed(i,j,1)*pbbed(i,j,1,k)/morfac/dt*(1.0-por)*dx*dy
                                     fre(i,j,k)  = min(1.0,Savailable/max(Sout(i,j,k),tiny(0.0)) )
                                 enddo
                                 do i=1-mbc,mx+mbc
@@ -164,8 +164,6 @@
                     if (my>0) then
                         do j=1-mbc,my+mbc
                             do i=1-mbc,mx+mbc
-                                !print *, i,j
-                                !print *, dzbed(i,j,:)
                             ! bed level changes per fraction in this morphological time step in meters sand including pores
                             ! positive in case of erosion
                                 if (sourcesink==0) then
@@ -207,7 +205,6 @@
                                     nd_var = totalnum(i,j)
 
                                     call update_fractions(i,j,dzbed(i,j,:),pbbed(i,j,:,:),edg(i,j,:),sum(dzg(i,j,:)))
-
 
                                 endif
                             enddo ! imax+1
@@ -259,15 +256,16 @@
 
                 aux(1,:,:) = zb
 
-                call avalanch
+                call avalanch(mbc,mx,my,dx,dy,dt,naux,aux,h,t)
 
+                aux(1,:,:) = zb
 
             end subroutine bed_update
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! This part is designed for avanlanching scheme
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            subroutine avalanch(mbc,mx,my,dx,dy,naux,aux,h)
+            subroutine avalanch(mbc,mx,my,dx,dy,dt,naux,aux,h,t)
 
                 use sediment_module, only : avalanching,morfac,gmax,hswitch,eps,wetslp,dryslp,totalthick,&
                         dzbed,por,pbbed,nd_var,aval !dzbed,sedcal
@@ -276,12 +274,13 @@
                 ! argument
                 integer, intent(in) :: mbc,mx,my,naux
                 real(kind=Prec), intent(in) :: t,dt,dx,dy
+                real(kind=Prec), intent(in) :: h(1-mbc:mx+mbc,1-mbc:my+mbc)
                 real(kind=Prec), intent(inout) :: aux(naux,1-mbc:mx+mbc,1-mbc:my+mbc)
                 !local
                 Integer         :: ie,id,jdz,je,jd,i,j,k,ndz
-                Real(kind=Prec) :: sdz,dzb,one=1.00,dzmax,dzleft
+                Real(kind=Prec) :: sdz,dzb,one=1.00,dzmax,dzleft,dzavt,dzt
                 Real(kind=Prec),dimension(gmax) :: edg1,edg2
-                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: dzbdx,dzbdy,zb,dh,sedero,dzbdt
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: dzbdx,dzbdy,zb,dh,sedero,dzbdt,wet
                 !
                 zb = aux(1,:,:)
 
@@ -374,7 +373,7 @@
                                             dzleft = dzleft-dzt
                                             ! erosion deposition per fraction (upwind or downwind); edg is positive in case of erosion
                                             do k=1,gmax
-                                                edg2(k) =  *dzt*pbbed(ie,j,jdz,k)*(1.0-por)/dt                ! erosion
+                                                edg2(k) =  dzt*pbbed(ie,j,jdz,k)*(1.0-por)/dt                ! erosion
                                                 edg1(k) = -edg2(k)                                   ! deposition
                                             enddo
                                             dzavt = dzavt + sum(edg2)*dt/(1.0-por)

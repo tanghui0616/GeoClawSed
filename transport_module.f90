@@ -14,7 +14,7 @@
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             subroutine bedrough(mbc,mx,my,u,v,h)
 
-                use sediment_module, only: pbbed,hcr,D,g,m0,rhos,rho
+                use sediment_module, only: pbbed,hcr,D,g,m0,rhos,rho,gmax
                 use Set_Precision, only: Prec
 
                 implicit none
@@ -33,7 +33,7 @@
                 Real(kind=Prec) :: a1,gammaWs
 
                 !output
-                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: z0
+                Real(kind=Prec),intent(out),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: z0
 
                 gammaWs = 0.056
                 frc = pbbed(:,:,1,:)
@@ -85,9 +85,9 @@
                     do j = 1-mbc, my+mbc
                         do k = 1, gmax
                             meansize(i,j) = meansize(i,j)+D(k)*fr(i,j,k)
-                        end do
-                    end do
-                end do
+                        enddo
+                    enddo
+                enddo
             end function meansize
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! This Part is used to calculate critical velocity for each grain size classes!
@@ -108,7 +108,7 @@
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) :: hloc
                 Real(kind=Prec) :: delta
                 !output
-                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ub_cr, us_cr1, us_cr2
+                Real(kind=Prec),intent(out),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ub_cr, us_cr1, us_cr2
 
                 call settling_velocity(mbc,mx,my)
 
@@ -198,11 +198,11 @@
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: C
                 Real(kind=Prec),dimension(gmax) :: w,R,alpha
                 !output
-                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ws
+                Real(kind=Prec),intent(out),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: ws
 
                 delta  = (rhos-rho)/rho
 
-                C = ccbg+cc
+                C = ccbg+ccg !how to pass to here
 
                 do k = 1, gmax
                     Te    = 20.0
@@ -242,15 +242,15 @@
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   wet,vmg,urms,urms2,hloc,Cd,Asb,term1,term2
                 Real(kind=Prec),dimension(gmax) :: dster
                 Real(kind=Prec) :: delta,Ass,perc
-                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Ts,ceq,ceqs,ceqb
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Ts,ceq,ceqs,ceqb
 
                 !output
-                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Tsg,ceqbg,ceqsg
+                Real(kind=Prec),intent(out),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Tsg,ceqbg,ceqsg
 
                 wet = 0.0
 
                 do i = 1-mbc, mx+mbc
-                    do j = 1-mb, my+mbc
+                    do j = 1-mbc, my+mbc
                         if (h(i,j)>eps) then
                             wet(i,j) = 1.0
                         endif
@@ -277,7 +277,6 @@
 
                 call crtical_velocity1(mbc,mx,my,h)
 
-                !print *,us_cr2
                 ! bed roughness
 
                 call bedrough(mbc,mx,my,u,v,h)
@@ -291,8 +290,8 @@
                     do i = 1-mbc, mx+mbc
                         do j = 1-mbc, my+mbc
                             Cd(i,j)=(0.40/(log(max(hloc(i,j),10.0*z0(i,j))/z0(i,j))-1.0))**2.0
-                        end do
-                    end do
+                        enddo
+                    enddo
 
                     ! transport parameters
                     Asb=0.005*hloc*(D(k)/hloc/(delta*g*D(k)))**1.20         ! bed load coefficent
@@ -309,7 +308,7 @@
                         do i=1-mbc,mx+mbc
                             if(term1(i,j)>Ub_cr(i,j,k) .and. hloc(i,j)>eps) then
                                 term2(i,j)=(term1(i,j)-Ub_cr(i,j,k))**2.40
-                            end if
+                            endif
                             ceq(i,j,k) = (Asb(i,j)+Ass)*term2(i,j)/hloc(i,j)
                         enddo
                     enddo
@@ -354,7 +353,7 @@
                 Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc) ::   wet,vmg,urms,urms2,hloc,Cd,Asb,term1,term2,term3
                 Real(kind=Prec),dimension(gmax) :: dster
                 Real(kind=Prec) :: delta,Ass,perc
-                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Ts,ceq,ceqs,ceqb
+                Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Ts,ceq,ceqs,ceqb
                 !output
                 Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: Tsg,ceqbg,ceqsg
 
@@ -362,7 +361,7 @@
                 wet = 0.0
 
                 do i = 1-mbc, mx+mbc
-                    do j = 1-mb, my+mbc
+                    do j = 1-mbc, my+mbc
                         if (h(i,j)>eps) then
                             wet(i,j) = 1.0
                         endif
@@ -457,7 +456,7 @@
                 Real(kind=Prec) :: exp_ero
 
                 !out
-                Real(kind=Prec),intent(inout),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: cu,cub,cv,cvb,ccg,ccbg,susg,Subg,Svbg,Svsg
+                Real(kind=Prec),intent(out),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax) :: cu,cub,cv,cvb,ccg,ccbg,Susg,Subg,Svbg,Svsg
 
                 vmag2     = u**2+v**2
                 ! calculate equibrium sediment concentration
@@ -475,7 +474,6 @@
                                     + ceqbg(i,j,k)*frc(i,j,k)/dt) !ceqsg, ceqbg from vt_vr or sb_vr
                             fac(i,j,k) =min(1.0,dzbed(i,j,1)*frc(i,j,k)/max(tiny(0.0),exp_ero))! what's laythick? TODO
                             !print *, exp_ero
-
                         enddo
                     enddo
                 enddo
@@ -507,7 +505,7 @@
                     cu(mx+mbc,:,:) = cc(mx+mbc,:,:)
                     cub(mx+mbc,:,:) = ccb(mx+mbc,:,:)
                     !y-direction
-                    if (jmax>0) then
+                    if (my>0) then
                         do j=1-mbc,my+mbc
                             do i=1-mbc,mx+mbc
                                 if(v(i,j)>0) then
@@ -547,7 +545,7 @@
                                 !bed sediment tranpsort
                                 ero2(i,j,k) = fac(i,j,k)*h(i,j)*ceqbg(i,j,k)*pbbed(i,j,1,k)/Tsg(i,j,k)
                                 ccb(i,j,k) = (dt*Tsg(i,j,k))/(dt+Tsg(i,j,k))* &
-                                        (hold(i,j)*cc(i,j,k)/dt -((Sub(i,j,k)*dx-Sub(i-1,j,k)*dx+&
+                                        (h(i,j)*cc(i,j,k)/dt -((Sub(i,j,k)*dx-Sub(i-1,j,k)*dx+&
                                         Svb(i,j,k)*dy-Svb(i,j-1,k)*dy)/(dx*dy)-ero2(i,j,k)))
                                 ccb(i,j,k)=max(ccb(i,j,k),0.00)
                                 ccb(i,j,k)=min(ccb(i,j,k),cmax/2.0*h(i,j))
@@ -563,15 +561,15 @@
                                         (hold(i,j)*cc(i,j,k)/dt -((Sus(i,j,k)*dx-Sus(i-1,j,k)*dx)/(dx*dy)-&
                                         ero1(i,j,k)))
                             cc(i,j,k)=max(cc(i,j,k),0.00)
-                            cc(i,j,k)=min(cc(i,j,k),cmax*h(i,j))
+                            cc(i,j,k)=min(cc(i,j,k),cmax/2.0*h(i,j))
                             depo_ex1(i,j,k) = cc(i,j,k)/Tsg(i,j,k)
                             !bed sediment tranpsort
                             ero2(i,j,k) = fac(i,j,k)*h(i,j)*ceqbg(i,j,k)*pbbed(i,j,1,k)/Tsg(i,j,k)
                             ccb(i,j,k) = (dt*Tsg(i,j,k))/(dt+Tsg(i,j,k))* &
-                                        (hold(i,j)*ccb(i,j,k)/dt -((Sub(i,j,k)*dx-Sub(i-1,j,k)*dx)/(dx*dy)-&
+                                        (h(i,j)*ccb(i,j,k)/dt -((Sub(i,j,k)*dx-Sub(i-1,j,k)*dx)/(dx*dy)-&
                                         ero2(i,j,k)))
                             ccb(i,j,k)=max(ccb(i,j,k),0.00)
-                            ccb(i,j,k)=min(ccb(i,j,k),cmax*h(i,j))
+                            ccb(i,j,k)=min(ccb(i,j,k),cmax/2.0*h(i,j))
                             depo_ex2(i,j,k) = ccb(i,j,k)/Tsg(i,j,k)
                         enddo
                     endif
@@ -579,7 +577,7 @@
                     ccg = cc
                     ccb(:,:,k) = ccb(:,:,k)/h
                     ccbg = ccb
-                    !print *, k
+                    
                 end do
                 Svsg = Svs
                 Susg = Sus

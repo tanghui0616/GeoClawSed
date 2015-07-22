@@ -5,7 +5,7 @@
     module Flux
 
         !use params
-        use Set_Precision, only: Prec
+        !use Set_Precision, only: Prec
 
         implicit none
 
@@ -30,25 +30,25 @@
             Real(kind=Prec),dimension(1-mbc:mx+mbc,1-mbc:my+mbc,gmax,2) ::C_new_x,C_new_y,Cx_l,Cx_r,Cy_l,Cy_r
             !flux limitor
 
-            V_new(1-mbc:mx+mbc,1-mbc:my+mbc,1) = u(:,:)
-            V_new(1-mbc:mx+mbc,1-mbc:my+mbc,2) = v(:,:)
-            V_new(1-mbc:mx+mbc,1-mbc:my+mbc,3) = h(:,:)
+            V_new(1-mbc:mx+mbc,1-mbc:my+mbc,1) = u
+            V_new(1-mbc:mx+mbc,1-mbc:my+mbc,2) = v
+            V_new(1-mbc:mx+mbc,1-mbc:my+mbc,3) = h
             C_new_x(1-mbc:mx+mbc,1-mbc:my+mbc,:,1)= cc
             C_new_x(1-mbc:mx+mbc,1-mbc:my+mbc,:,2)= ccb
             C_new_y(1-mbc:mx+mbc,1-mbc:my+mbc,:,1)= cc
             C_new_y(1-mbc:mx+mbc,1-mbc:my+mbc,:,2)= ccb
-            V_new(0,:,:) = V_new(1,:,:)
-            V_new(mx+1,:,:) = V_new(mx,:,:)
-            V_new(:,0,:) = V_new(:,1,:)
-            V_new(:,my+1,:) = V_new(:,my,:)
-            C_new_x(0,:,:,:) = C_new_x(1,:,:,:)
-            C_new_x(mx+1,:,:,:) = C_new_x(mx,:,:,:)
-            C_new_x(:,0,:,:) = C_new_x(:,1,:,:)
-            C_new_x(:,my+1,:,:) =C_new_x(:,my,:,:)
-            C_new_y(0,:,:,:) = C_new_y(1,:,:,:)
-            C_new_y(mx+1,:,:,:) = C_new_y(mx,:,:,:)
-            C_new_y(:,0,:,:) = C_new_y(:,1,:,:)
-            C_new_y(:,my+1,:,:) =C_new_y(:,my,:,:)
+            V_new(1-mbc,:,:) = V_new(2-mbc,:,:)
+            V_new(mx+mbc,:,:) = V_new(mx+mbc-1,:,:)
+            V_new(:,1-mbc,:) = V_new(:,2-mbc,:)
+            V_new(:,my+mbc,:) = V_new(:,my+mbc-1,:)
+            C_new_x(1-mbc,:,:,:) = C_new_x(2-mbc,:,:,:)
+            C_new_x(mx+mbc,:,:,:) = C_new_x(mx+mbc-1,:,:,:)
+            C_new_x(:,1-mbc,:,:) = C_new_x(:,2-mbc,:,:)
+            C_new_x(:,my+mbc,:,:) =C_new_x(:,my+mbc-1,:,:)
+            C_new_y(1-mbc,:,:,:) = C_new_y(2-mbc,:,:,:)
+            C_new_y(mx+mbc,:,:,:) = C_new_y(mx+mbc-1,:,:,:)
+            C_new_y(:,1-mbc,:,:) = C_new_y(:,2-mbc,:,:)
+            C_new_y(:,my+mbc,:,:) =C_new_y(:,my+mbc-1,:,:)
 
             !flux limitor
             call flux_limitor(mbc,mx,my,V_new,C_new_x,C_new_y)
@@ -143,7 +143,7 @@
 
             ! Arguments
             integer, intent(in) :: mbc,mx,my
-            real(kind=Prec), intent(in) :: V_new1-mbc:mx+mbc,1-mbc:my+mbc,3),C_new_x(1-mbc:mx+mbc,1-mbc:my+mbc,gmax,2),&
+            real(kind=Prec), intent(in) :: V_new(1-mbc:mx+mbc,1-mbc:my+mbc,3),C_new_x(1-mbc:mx+mbc,1-mbc:my+mbc,gmax,2),&
                                         C_new_y(1-mbc:mx+mbc,1-mbc:my+mbc,gmax,2)
             !output
             real(kind=Prec), intent(out) :: psix1(1-mbc:mx+mbc,1-mbc:my+mbc,gmax+3), psix2(1-mbc:mx+mbc,1-mbc:my+mbc,gmax+3), &
@@ -152,7 +152,6 @@
             !local
 
             integer, :: i,j,k,ii
-
             Real(kind=Prec),Dimension(1-mbc:mx+mbc-1,1-mbc:my+mbc-1,gmax+3) :: Rx1,Rx2 !
             Real(kind=Prec),Dimension(1-mbc:mx+mbc-1,1-mbc:my+mbc-1,gmax+3) :: Ry1,Ry2  !
             Real(kind=Prec),Dimension(1-mbc:mx+mbc-1,1-mbc:my+mbc-1,gmax+3) :: denx, deny
@@ -179,7 +178,7 @@
                         Rx2(i,j,ii) = (V_new(i,j,ii)-V_new(i-1,j,ii))/denx(i,j,ii)
                         Ry1(i,j,ii) = (V_new(i,j+2,ii)-V_new(i,j+1,ii))/deny(i,j,ii)
                         Ry2(i,j,ii) = (V_new(i,j,ii)-V_new(i,j-1,ii))/deny(i,j,ii)
-                    end do
+                    enddo
                     do ii = 1, gmax
                         denx(i,j,ii+3) = C_new_x_t(i+1,j,ii)-C_new_x_t(i,j,ii)
                         denx(i,j,ii+3) = sign(max(abs(denx(i,j,ii)),toler),denx(i,j,ii))
@@ -189,7 +188,7 @@
                         Rx2(i,j,ii+3) = (C_new_x_t(i,j,ii)-C_new_x_t(i-1,j,ii))/denx(i,j,ii)
                         Ry1(i,j,ii+3) = (C_new_y_t(i,j+2,ii)-C_new_y_t(i,j+1,ii))/deny(i,j,ii)
                         Ry2(i,j,ii+3) = (C_new_y_t(i,j,ii)-C_new_y_t(i,j-1,ii))/deny(i,j,ii)
-                    end do
+                    enddo
                     if (limit_method == 'Vanleer') then
                         psix1(i,j,:) = (Rx1(i,j,:)+abs(Rx1(i,j,:)))/(1.0+Rx1(i,j,:))
                         psix2(i,j,:) = (Rx2(i,j,:)+abs(Rx2(i,j,:)))/(1.0+Rx2(i,j,:))
@@ -224,52 +223,52 @@
                             endif
                         enddo
                     elseif(limit_method == 'beta_limiter') then
-                        do ii = 1, 3
+                        do ii = 1, gmax+3
                             psix1(i,j,ii) = max(0.0,min(beta*Rx1(i,j,ii),1.0),min(Rx1(i,j,ii),beta))
                             psix2(i,j,ii) = max(0.0,min(beta*Rx2(i,j,ii),1.0),min(Rx2(i,j,ii),beta))
                             psiy1(i,j,ii) = max(0.0,min(beta*Ry1(i,j,ii),1.0),min(Ry1(i,j,ii),beta))
                             psiy2(i,j,ii) = max(0.0,min(beta*Ry2(i,j,ii),1.0),min(Ry2(i,j,ii),beta))
                         enddo
                     endif
-                end do
-            end do
-            psix1(0,:,:)=psix1(1,:,:)
-            psix1(-1,:,:)=psix1(0,:,:)
+                enddo
+            enddo
+            psix1(2-mbc,:,:)=psix1(3-mbc,:,:)
+            psix1(1-mbc,:,:)=psix1(2-mbc,:,:)
             psix1(mx,:,:)=psix1(mx-1,:,:)
             psix1(mx+mbc-1,:,:)=psix1(mx,:,:)
             psix1(mx+mbc,:,:)=psix1(mx+mbc-1,:,:)
-            psix2(0,:,:)=psix2(1,:,:)
-            psix2(-1,:,:)=psix2(0,:,:)
+            psix2(2-mbc,:,:)=psix2(3-mbc,:,:)
+            psix2(1-mbc,:,:)=psix2(2-mbc,:,:)
             psix2(mx,:,:)=psix2(mx-1,:,:)
             psix2(mx+mbc-1,:,:)=psix2(mx,:,:)
             psix2(mx+mbc,:,:)=psix1(mx+mbc-1,:,:)
-            psix1(:,0,:)=psix1(:,1,:)
-            psix1(:,-1,:)=psix1(:,0,:)
+            psix1(:,2-mbc,:)=psix1(:,3-mbc,:)
+            psix1(:,1-mbc,:)=psix1(:,2-mbc,:)
             psix1(:,my,:)=psix1(:,my-1,:)
             psix1(:,my+mbc-1,:)=psix1(:,my,:)
             psix1(:,my+mbc,:)=psix1(:,my+mbc-1,:)
-            psix2(:,0,:)=psix2(:,1,:)
-            psix2(:,-1,:)=psix2(:,0,:)
+            psix2(:,2-mbc,:)=psix2(:,3-mbc,:)
+            psix2(:,1-mbc,:)=psix2(:,2-mbc,:)
             psix2(:,my,:)=psix2(:,my-1,:)
             psix2(:,my+mbc-1,:)=psix2(:,my,:)
             psix2(:,my+mbc,:)=psix2(:,my+mbc,:)
-            psiy1(0,:,:)=psiy1(1,:,:)
-            psiy1(-1,:,:)=psiy1(0,:,:)
+            psiy1(2-mbc,:,:)=psiy1(3-mbc,:,:)
+            psiy1(1-mbc,:,:)=psiy1(2-mbc,:,:)
             psiy1(mx,:,:)=psiy1(mx-1,:,:)
             psiy1(mx+mbc-1,:,:)=psiy1(mx,:,:)
             psiy1(mx+mbc,:,:)=psiy1(mx+mbc-1,:,:)
-            psiy2(0,:,:)=psiy2(1,:,:)
-            psiy2(-1,:,:)=psiy2(0,:,:)
+            psiy2(2-mbc,:,:)=psiy2(3-mbc,:,:)
+            psiy2(1-mbc,:,:)=psiy2(2-mbc,:,:)
             psiy2(mx,:,:)=psiy2(mx-1,:,:)
             psiy2(mx+mbc-1,:,:)=psiy2(mx,:,:)
             psiy2(mx+mbc,:,:)=psiy2(mx+mbc-1,:,:)
-            psiy1(:,0,:)=psiy1(:,1,:)
-            psiy1(:,-1,:)=psiy1(:,0,:)
+            psiy1(:,2-mbc,:)=psiy1(:,3-mbc,:)
+            psiy1(:,1-mbc,:)=psiy1(:,2-mbc,:)
             psiy1(:,my,:)=psiy1(:,my-1,:)
             psiy1(:,my+mbc-1,:)=psiy1(:,my,:)
             psiy1(:,my+mbc,:)=psiy1(:,my+mbc-1,:)
-            psiy2(:,0,:)=psiy2(:,1,:)
-            psiy2(:,-1,:)=psiy2(:,0,:)
+            psiy2(:,2-mbc,:)=psiy2(:,3-mbc,:)
+            psiy2(:,1-mbc,:)=psiy2(:,2-mbc,:)
             psiy2(:,my,:)=psiy2(:,my-1,:)
             psiy2(:,my+mbc-1,:)=psiy2(:,my,:)
             psiy2(:,my+mbc,:)=psiy2(:,my+mbc,:)

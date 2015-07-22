@@ -1,5 +1,5 @@
 !
-subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time,q)
+subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,dt,maux,aux,time,q)
 !     ============================================
 !
 !     # set auxiliary arrays
@@ -18,21 +18,23 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time,q)
 
     use topo_module
 
-    use sediment_module, only: pbbed
+    !use sediment_module, only: pbbed
+    use bedupdate_module, only: bed_update
 
     implicit none
 
     ! Arguments
-    integer, intent(in) :: mbc,mx,my,maux,i,j
+    integer, intent(in) :: mbc,mx,my,maux
     real(kind=8), intent(in) :: xlow,ylow,dx,dy
     real(kind=8), intent(inout) :: aux(maux,1-mbc:mx+mbc,1-mbc:my+mbc)
     
     ! Locals
-    integer :: ii,jj,m, iint,jint
+    integer :: ii,jj,m, iint,jint,i,j
     real(kind=8) :: x,y,xm,ym,xp,yp,topo_integral
     character(len=*), parameter :: aux_format = "(2i4,4d15.3)"
     integer :: skipcount,iaux,ilo,jlo
     real(kind=8) :: u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
+
     ! Get primative variable
     do i = 1-mbc, mx+mbc
         do j = 1-mbc, my+mbc
@@ -116,7 +118,8 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time,q)
 
 
             ! Use input topography files if available
-            if (mtopofiles > 0 .and. test_topography == 0 .and. time == t0) then !how to pass time inside?
+            if (mtopofiles > 0 .and. test_topography == 0 .and. time == t0) then
+
                 topo_integral = 0.d0
 
                 call cellgridintegrate(topo_integral,xm,x,xp,ym,y,yp, &
@@ -127,8 +130,8 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux,time,q)
                     aux(1,ii,jj) = topo_integral / (dx * dy * aux(2,ii,jj))
             endif
             if (mtopofiles > 0 .and. test_topography == 0 .and. time /= t0 ) then
-                call transus(mbc,mx,my,xlow,ylow,dx,dy,aux,time,q,pbbed,u,v,h)
-                call bed_update
+
+                call bed_update(mbc,mx,my,t,dt,dx,dy,h,aux,naux)
                 aux(1,ii,jj)= zb(ii,jj)
             endif
 
