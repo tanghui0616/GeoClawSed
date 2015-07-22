@@ -53,7 +53,7 @@ subroutine b4step2(mbc,mx,my,meqn,q,xlower,ylower,dx,dy,t,dt,maux,aux)
         ! topo arrays might have been updated by dtopo more recently than
         ! aux arrays were set unless at least 1 step taken on all levels
         !aux(1,:,:) = NEEDS_TO_BE_SET ! new system checks this val before setting
-    call setaux(mbc,mx,my,xlower,ylower,dx,dy,dt,maux,aux,t,q)
+    call setauxnew(mbc,mx,my,xlower,ylower,dx,dy,dt,maux,aux,t,q)
     !endif
 
 

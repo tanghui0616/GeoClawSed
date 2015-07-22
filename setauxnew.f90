@@ -1,5 +1,5 @@
 !
-subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux)
+subroutine setauxnew(mbc,mx,my,xlow,ylow,dx,dy,dt,maux,aux,time,q)
 !     ============================================
 !
 !     # set auxiliary arrays
@@ -14,9 +14,12 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux)
 
     use geoclaw_module, only: coordinate_system, earth_radius, deg2rad
     use geoclaw_module, only: sea_level
-    use amr_module, only: mcapa, xupper, yupper, xlower, ylower, NEEDS_TO_BE_SET
+    use amr_module, only: mcapa, xupper, yupper, xlower, ylower, t0
 
     use topo_module
+
+    !use sediment_module, only: pbbed
+    use bedupdate_module, only: bed_update
 
     implicit none
 
@@ -26,10 +29,20 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux)
     real(kind=8), intent(inout) :: aux(maux,1-mbc:mx+mbc,1-mbc:my+mbc)
     
     ! Locals
-    integer :: ii,jj,m, iint,jint
+    integer :: ii,jj,m, iint,jint,i,j
     real(kind=8) :: x,y,xm,ym,xp,yp,topo_integral
     character(len=*), parameter :: aux_format = "(2i4,4d15.3)"
     integer :: skipcount,iaux,ilo,jlo
+    real(kind=8) :: u(1-mbc:mx+mbc,1-mbc:my+mbc),v(1-mbc:mx+mbc,1-mbc:my+mbc),h(1-mbc:mx+mbc,1-mbc:my+mbc)
+
+    ! Get primative variable
+    do i = 1-mbc, mx+mbc
+        do j = 1-mbc, my+mbc
+            h(i,j) = q(1,i,j)
+            u(i,j) = q(2,i,j)/h(i,j)
+            v(i,j) = q(3,i,j)/h(i,j)
+        enddo
+    enddo
 
     ! Lat-Long coordinate system in use, check input variables
     if (coordinate_system == 2) then
@@ -105,7 +118,8 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux)
 
 
             ! Use input topography files if available
-            if (mtopofiles > 0 .and. test_topography == 0 .and. time == t0) then !how to pass time inside?
+            if (mtopofiles > 0 .and. test_topography == 0 .and. time == t0) then
+
                 topo_integral = 0.d0
 
                 call cellgridintegrate(topo_integral,xm,x,xp,ym,y,yp, &
@@ -115,9 +129,9 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux)
 
                     aux(1,ii,jj) = topo_integral / (dx * dy * aux(2,ii,jj))
             endif
-            if (mtopofiles > 0 .and. test_topography == 0 ) then
-                call transus
-                call bed_update
+            if (mtopofiles > 0 .and. test_topography == 0 .and. time /= t0 ) then
+
+                call bed_update(mbc,mx,my,t,dt,dx,dy,h,aux,naux)
                 aux(1,ii,jj)= zb(ii,jj)
             endif
 
@@ -176,4 +190,4 @@ subroutine setaux(mbc,mx,my,xlow,ylow,dx,dy,maux,aux)
         enddo
     endif
 
-end subroutine setaux
+end subroutine setauxnew
