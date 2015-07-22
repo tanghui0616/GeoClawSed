@@ -32,9 +32,9 @@
 ! =============================================================================
     module sediment_module
 
-        use Set_Precision
+        use Set_Precision, only: Prec
         use amr_module, only: tstart_thisrun
-        use topo_mocule, only: rectintegral, intersection
+        use topo_module, only: rectintegral, intersection
 
         implicit none
         save
@@ -52,7 +52,7 @@
         real(kind=Prec), allocatable :: dxsed(:), dysed(:)
         real(kind=Prec), allocatable :: sedtime(:)
         integer, allocatable ::  mxsed(:), mysed(:)
-        real(kind=Prec), allocatable :: totalthick(:,:),pbbed(:,:,:)
+        real(kind=Prec), allocatable :: totalthick(:,:),pbbed(:,:,:,:)
         real(kind=Prec), allocatable :: totalnum(:,:)
         real(kind=Prec), allocatable :: dzbed(:,:)
         integer, allocatable :: i0sed(:), msed(:), msedorder(:)
@@ -92,7 +92,7 @@
 
                 use geoclaw_module
                 use amr_module, only: xlower,xupper,xlower,yupper
-                use Set_Precision
+                use Set_Precision, only: Prec
 
 
                 implicit none
@@ -102,7 +102,7 @@
 
                 !locals
                 integer, parameter :: iunit = 7,SED_PARM_UNIT=78
-                integer :: i,j,k,ised,finer_than,rank
+                integer :: i,j,k,ised,finer_than,rank,nl
                 real(kind=Prec) :: area_i,area_j,x_junk,y_junk
                 real(kind=Prec) :: area, area_domain
 
@@ -116,7 +116,7 @@
                 if (present(file_name)) then
                     call opendatafile(iunit, file_name)
                 else
-                    call opendatafile(iunit, 'sed.data')
+                    call opendatafile(iunit, 'thick.sed')
                 endif
 
                 ! Read in sediment specification type
@@ -243,10 +243,12 @@
                         sedtime(i) = -huge(1.0)
                         call read_psed_file(mxsed(i),mysed(i),ipsedtype(i),sedpfname(i), &
                             sedpwork(i0sed(i):i0sed(i)+msed(i)-1))
-                        allocate(pbbed(1-mgc:mxsed(i)+mgc,1-mgc,mysed(i)+mgc,lmx,gmax))
+                        allocate(pbbed(1-mgc:mxsed(i)+mgc,1-mgc,mysed(i)+mgc,lmax,gmax))
                         do j = 1, mysed(i)
                             do k = 1, mxsed(i)
-                                pbbed(i,k,:) = pbbed_temp(i+k*mysed(i),:)
+                                do nl = 1, lmax
+                                    pbbed(i,k,nl,:) = pbbed_temp(i+k*mysed(i),:) !set uniform grain size distribution
+                                enddo
                             enddo
                         enddo
                     enddo
@@ -257,6 +259,7 @@
                     ! The finest one will be given priority in any region
                     ! msedorder(rank) = i means that i'th sediment file has rank,
                     ! where the file with rank=1 is the finest and considered first.
+                    ! we check for both sediment thickness profile and grain size distribution file
                     do i=1,mtsedfiles
                         finer_than = 0
                         do j=1,mtsedfiles
@@ -284,7 +287,6 @@
                     i0sed0(1) = 1
                     mtsed0size = dot_product(msed,sed0save)
                     allocate(sed0twork(mtsed0size))
-                    allocate(sed0pwork(mpsed0size,gmax))
                     do i = 2,mtsedfiles
                         i0sed0(i)= i0sed0(i-1) + msed(i-1)*sed0save(i-1)
                     enddo
@@ -293,15 +295,50 @@
                         if (sed0save(i)>0) then
                             sed0twork(i0sed0(i):i0sed0(i)+msed(i)-1) = &
                             sedtwork(i0sed(i):i0sed(i)+msed(i)-1)
+                        endif
+                    enddo
+
+                    do i=1,mpsedfiles
+                        finer_than = 0
+                        do j=1,mpsedfiles
+                            if (j /= i) then
+                                area_i=dxsed(i)*dysed(i)
+                                area_j=dxsed(j)*dysed(j)
+                                if (area_i < area_j) finer_than = finer_than + 1
+                                ! if two files have the same resolution, order is
+                                ! arbitrarily chosen
+                                if ((area_i == area_j).and.(j < i)) then
+                                    finer_than = finer_than + 1
+                                endif
+                            endif
+                        enddo
+                        ! ifinerthan tells how many other files, file i is finer than
+                        rank = mpsedfiles - finer_than
+                        msedorder(rank) = i
+                    enddo
+
+                    write(SED_PARM_UNIT,*) ' '
+                    write(SED_PARM_UNIT,*) '  Ranking of sediment grain size distribution files', &
+                                        '  finest to coarsest: ', &
+                                    (msedorder(rank),rank=1,mpsedfiles)
+                    write(SED_PARM_UNIT,*) ' '
+                    i0sed0(1) = 1
+                    mpsed0size = dot_product(msed,sed0save)
+                    allocate(sed0pwork(mpsed0size,gmax))
+                    do i = 2,mpsedfiles
+                        i0sed0(i)= i0sed0(i-1) + msed(i-1)*sed0save(i-1)
+                    enddo
+
+                    do i = 1,mpsedfiles
+                        if (sed0save(i)>0) then
                             sed0pwork(i0sed0(i):i0sed0(i)+msed(i)-1,:) = &
                             sedpwork(i0sed(i):i0sed(i)+msed(i)-1,:)
                         endif
                     enddo
 
 
-
                     ! Check that topo arrays cover full domain: need to check the area but not now!
-                    call sedarea(xlower,xupper,ylower,yupper,1,area)
+                    call sedarea(xlower,xupper,ylower,yupper,1,area,mtsedfiles,mpsedfiles)
                     area_domain = (yupper-ylower)*(xupper-xlower)
                     if (abs(area - area_domain) > 1e-12*area_domain) then
                         write(6,*) '**** sediment arrays do not cover domain'
@@ -320,7 +357,7 @@
             subroutine read_tsed_file(mx,my,sed_type,fname,totalthick_temp)
 
                 use geoclaw_module
-                use Set_Precision
+                use Set_Precision, only: Prec
 
                 implicit none
 
@@ -369,8 +406,8 @@
                     ! ================================================================
                     ! ASCII file with header followed by thickness data
                     ! (progressing from upper left corner across rows, then down)
-                    ! one value per line if topo_type=2 or
-                    ! mx values per line if topo_type=3
+                    ! one value per line if sed_type=2 or
+                    ! mx values per line if sed_type=3
                     ! ================================================================
                     case(2:3)
                     ! Read header
@@ -428,7 +465,7 @@
             subroutine read_psed_file(mx,my,sed_type,fname,pbbed_temp)
 
                 use geoclaw_module
-                use Set_Precision
+                use Set_Precision, only: Prec
 
                 implicit none
 
@@ -638,6 +675,118 @@
                 write(GEO_PARM_UNIT,*) '  dx, dy (meters/degrees) = ', dx,dy
 
             end subroutine read_sed_header
+
+    ! ========================================================================
+    ! subroutine read_sed_header(fname,sed_type,mx,my,xll,yll,xhi,yhi,dx,dy)
+    ! ========================================================================
+    !  Read sediment file header to determine space needed in allocatable array
+    !
+    !  :Input:
+    !   - fname - (char) Name of file
+    !   - sed_type - (int) Type of sediment file (-3 < topo_type < 3)
+    !
+    !  :Output:
+    !   - mx,my - (int) Number of grid points
+    !   - xll,yll,xhi,yhi - (float) Lower and upper coordinates for grid
+    !   - dx,dy - (float) Spatial resolution of grid
+    ! ========================================================================
+
+            subroutine read_sed_header(fname,per_type,mx,my,xll,yll,xhi,yhi,dx,dy,mclasses)
+
+                use geoclaw_module
+
+                implicit none
+
+                ! Input and Output
+                character(len=150), intent(in) :: fname
+                integer, intent(in) :: per_type
+                integer, intent(out) :: mx,my
+                real(kind=8), intent(out) :: xll,yll,xhi,yhi,dx,dy,nclasses
+
+                ! Local
+                integer, parameter :: iunit = 19
+                integer :: sed_size, status
+                real(kind=8) :: x,y,th,no_data_value
+                logical :: found_file
+
+                inquire(file=fname,exist=found_file)
+                if (.not. found_file) then
+                    print *, 'Missing sediment file:'
+                    print *, '   ', fname
+                    stop
+                endif
+
+                open(unit=iunit, file=fname, status='unknown',form='formatted')
+
+
+                select case(abs(sed_type))
+                    ! ASCII file with 3 columns
+                    ! determine data size
+                    case(1)
+                        ! Initial size variables
+                        sed_size = 0
+                        mx = 0
+
+                        ! Read in first values, determines xlow and yhi
+                        read(iunit,*) xll,yhi,per
+                        sed_size = sed_size + 1
+                        mx = mx + 1
+
+                        ! Go through first row figuring out mx, continue to count
+                        y = yhi
+                        do while (yhi == y)
+                            read(iunit,*) x,y,per
+                            sed_size = sed_size + 1
+                            mx = mx + 1
+                        enddo
+                        mx = mx - 1
+                        ! Continue to count the rest of the lines
+                        do
+                            read(iunit,fmt=*,iostat=status) x,y,per
+                            if (status /= 0) exit
+                                sed_size = sed_size + 1
+                        enddo
+                        if (status > 0) then
+                            print *,"ERROR:  Error reading header of sediment file ",fname
+                            stop
+                        endif
+
+                        ! Calculate remaining values
+                        my = sed_size / mx
+                        xhi = x
+                        yll = y
+                        dx = (xhi-xll) / (mx-1)
+                        dy = (yhi-yll) / (my-1)
+
+                        ! ASCII file with header followed by z data
+                    case(2:3)
+                        read(iunit,*) mx
+                        read(iunit,*) my
+                        read(iunit,*) mclasses
+                        read(iunit,*) xll
+                        read(iunit,*) yll
+                        read(iunit,*) dx
+                        read(iunit,*) no_data_value
+                        dy = dx
+                        xhi = xll + (mx-1)*dx
+                        yhi = yll + (my-1)*dy
+
+                    case default
+                        print *, 'ERROR:  Unrecognized sed_type'
+                        print *, '    sed_type = ',sed_type
+                        print *, '  for sediment file:'
+                        print *, '   ', fname
+                        stop
+                end select
+
+                close(iunit)
+
+                write(GEO_PARM_UNIT,*) '  mx = ',mx,'  x = (',xll,',',xhi,')'
+                write(GEO_PARM_UNIT,*) '  my = ',my,'  y = (',yll,',',yhi,')'
+                write(GEO_PARM_UNIT,*) '  dx, dy (meters/degrees) = ', dx,dy
+
+            end subroutine read_sed_header
+
             ! ========================================================================
             !  set_geo(fname)
             !  Reads in user parameters from the given file name if provided
@@ -730,7 +879,7 @@
                 write(SED_PARM_UNIT,*) '   Number of Grain size classes:'gmax
                 write(SED_PARM_UNIT,*) '   Number of sediment layers:'lmax
                 write(SED_PARM_UNIT,*) '   Number of ghost cell:'mgc
-                write(SED_PARM_UNIT,*) '   Water depth consider sediment transport:'hrc
+                write(SED_PARM_UNIT,*) '   Water depth consider sediment transport:'hcr
                 if (friction_forcing) then
                     write(SEO_PARM_UNIT,*) '   Sediment grain size classes:', D(:)
                 endif
@@ -768,9 +917,9 @@
                 write(SED_PARM_UNIT,*) '    method to caculate sediment flux',method
             end subroutine set_sediment
 
-            recursive subroutine sedarea(x1,x2,y1,y2,m,area)
+            recursive subroutine sedarea(x1,x2,y1,y2,m,area,mtsedfiles,mpsedfiles)
 
-                use Set_Precision
+                use Set_Precision, only: Prec
 
             ! Compute the area of overlap of sediment file  with the rectangle (x1,x2) x (y1,y2)
             ! using sediment arrays indexed mtsedorder(mtopofiles) through mtsedorder(m)
