@@ -449,7 +449,7 @@ def set_sediment(rundata):
     data.toler_for_sediment_flux_limitor =1e-6
     
     #Processes control
-    data.source-sink_terms = 0
+    data.sourcesink_terms = 0
     data.have_avalanched = 'F'
     data.Include_avalanching = 1
     data.Switch_for_hard_structures = 1
