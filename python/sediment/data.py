@@ -47,7 +47,7 @@ class SedimentData(clawdata.ClawData):
         self.add_attribute('Critical_avalanching_slope_above_water',0.01)
         self.add_attribute('toler_for_sediment_flux_limitor',1e-6)
         #processes control paramter
-        self.add_attribute('source-sink_terms',0)
+        self.add_attribute('sourcesink_terms',0)
         self.add_attribute('have_avalanched','F')
         self.add_attribute('Include_avalanching',1)
         self.add_attribute('Switch_for_hard_structures',1)
@@ -66,8 +66,7 @@ class SedimentData(clawdata.ClawData):
     
     def write(self,out_file='./sediment.data',data_source='setrun.py'):
     
-        self.open_data_file('sed.data',data_source)
-        self.data_write(name='Sediment Data',description='(Type sediment specification)')
+        self.open_data_file(out_file,data_source)
         
         self.data_write('Sediment_density')
         self.data_write('Water_density')
@@ -99,7 +98,7 @@ class SedimentData(clawdata.ClawData):
         self.data_write('Critical_avalanching_slope_above_water')
         self.data_write('toler_for_sediment_flux_limitor')
         #processes control paramter
-        self.data_write('source-sink_terms')
+        self.data_write('sourcesink_terms')
         self.data_write('have_avalanched')
         self.data_write('Include_avalanching')
         self.data_write('Switch_for_hard_structures')
