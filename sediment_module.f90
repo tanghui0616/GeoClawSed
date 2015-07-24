@@ -41,7 +41,7 @@
         integer, parameter :: SED_PARM_UNIT = 78
 
         ! Work array for Sediment for all t
-        real(kind=8), allocatable :: sedtwork(:),sedpwork(:)
+        real(kind=8), allocatable :: sedtwork(:),sedpwork(:,:)
 
         ! Sediment file data
         integer :: test_sediment !don't need in this case actually, only for test
@@ -53,8 +53,8 @@
         real(kind=Prec), allocatable :: sedtime(:)
         integer, allocatable ::  mxsed(:), mysed(:)
         real(kind=Prec), allocatable :: totalthick(:,:),pbbed(:,:,:,:)
-        real(kind=Prec), allocatable :: totalnum(:,:)
-        real(kind=Prec), allocatable :: dzbed(:,:)
+        integer, allocatable :: totalnum(:,:)
+        real(kind=Prec), allocatable :: dzbed(:,:,:),totalthick_temp(:),pbbed_temp(:,:)
         integer, allocatable :: i0sed(:), msed(:), msedorder(:)
         integer, allocatable :: minlevelsed(:), maxlevelsed(:), itsedtype(:),ipsedtype(:)
         integer, allocatable :: sedID(:),sed0save(:)
@@ -78,11 +78,11 @@
         Real(kind=Prec) ::      rhos,rho,por,cmax,facDc,hcr,thick,nd_var
         Integer :: gmax,lmax,mgc
         Real(kind=Prec), dimension(:),allocatable :: D
-        Real(kind=Prec) ::      g,vis,Te,Trep,eps,k0,k1,m0,tsfac,Tsmin,smax,cf,facDc
+        Real(kind=Prec) ::      g,vis,Te,Trep,eps,k0,k1,m0,tsfac,Tsmin,smax,cf
         Real(kind=Prec) ::      nuh,nuhfac,gammaWs,a1,hswitch,wetslp,dryslp
-        Integer :: sourcesink,struct,morfac,sws,avalanching
+        Integer :: sourcesink,struct,morfac,sws,avalanching,thetanum
         Real(kind=Prec) ::      morstart
-        Real(kind=Prec) ::       vareps,split,merge,beta,toler
+        Real(kind=Prec) ::       vareps,split,merge,beta,TOLER
         CHARACTER(120)  ::      limit_method,trim,method
         Logical         ::      aval
 
@@ -139,7 +139,7 @@
                         write(SED_PARM_UNIT,*) '          will set pebbed(x,y,n) = 1/gmax in setaux'
                         return
                     endif
-                    if (mtsedfiles .ne. ptsedfiles) then
+                    if (mtsedfiles .ne. mtsedfiles) then
                         write(SED_PARM_UNIT,*) 'Warning:'
                         write(SED_PARM_UNIT,*) '   The number of thickness and grainsize distribution file is not same! '
                         write(SED_PARM_UNIT,*) '   Check your data! '
@@ -157,8 +157,9 @@
                     allocate(sedpfname(mpsedfiles),ipsedtype(mpsedfiles)) !add to file
                     allocate(minlevelsed(mtsedfiles),maxlevelsed(mtsedfiles))
                     allocate(i0sed(mtsedfiles),msed(mtsedfiles),msedorder(mtsedfiles))
-                    allocate(sedID(mtsedfiles),sedtime(mtsedfiles),sed0save(mtsedfiless))
+                    allocate(sedID(mtsedfiles),sedtime(mtsedfiles),sed0save(mtsedfiles))
                     allocate(i0sed0(mtsedfiles),sed0ID(mtsedfiles))
+
 
 
                     do i=1,mtsedfiles
@@ -198,17 +199,18 @@
                         write(SED_PARM_UNIT,*) '  tlow, thi = ', tlowsed(i),thised(i)
                         call read_per_header(sedpfname(i),ipsedtype(i),mxsed(i), &
                                 mysed(i),xlowsed(i),ylowsed(i),xhised(i),yhised(i), &
-                                dxsed(i),dysed(i))
+                                dxsed(i),dysed(i),gmax)
                     enddo
 
                     ! Read sediment information and allocate space for each file
                     mtsedsize = sum(msed)
                     mpsedsize = sum(msed)
                     allocate(sedtwork(mtsedsize))
-                    allocate(sedpwork(mpsedsize))
+                    allocate(sedpwork(mpsedsize,gmax))
                     do i=1,mtsedfiles
                         sedID(i) = i
                         sedtime(i) = -huge(1.0)
+                        allocate(totalthick_temp(1:mxsed(i)*mysed(i)),pbbed_temp(1:mxsed(i)*mysed(i),gmax))
                         call read_tsed_file(mxsed(i),mysed(i),itsedtype(i),sedtfname(i), &
                             sedtwork(i0sed(i):i0sed(i)+msed(i)-1))
                         allocate(totalthick(1-mgc:mxsed(i)+mgc,1-mgc:mysed(i)+mgc))
@@ -219,7 +221,7 @@
                                     totalnum(i,k) = nint(totalthick(i,k)/thick)
                                     if (totalthick(i,k)>totalnum(i,k)*thick) then
                                         totalnum(i,k)=totalnum(i,k)+1
-                                        dzbed(i,k,1:totalnum(i,k)-1)= thick
+                                        dzbed(i,k,1:int(totalnum(i,k)-1))= thick
                                         dzbed(i,k,totalnum(i,k)) =totalthick(i,k)-(totalnum(i,k)-1)*thick
                                     else
                                         dzbed(i,k,1:totalnum(i,k)-1)= thick
@@ -242,12 +244,12 @@
                         sedID(i) = i
                         sedtime(i) = -huge(1.0)
                         call read_psed_file(mxsed(i),mysed(i),ipsedtype(i),sedpfname(i), &
-                            sedpwork(i0sed(i):i0sed(i)+msed(i)-1))
-                        allocate(pbbed(1-mgc:mxsed(i)+mgc,1-mgc,mysed(i)+mgc,lmax,gmax))
+                            sedpwork(i0sed(i):i0sed(i)+msed(i)-1,:))
+                        allocate(pbbed(1-mgc:mxsed(i)+mgc,1-mgc:mysed(i)+mgc,lmax,gmax))
                         do j = 1, mysed(i)
                             do k = 1, mxsed(i)
                                 do nl = 1, lmax
-                                    pbbed(i,k,nl,:) = pbbed_temp(i+k*mysed(i),:) !set uniform grain size distribution
+                                    pbbed(k,j,nl,:) = pbbed_temp(i+k*mysed(i),:) !set uniform grain size distribution
                                 enddo
                             enddo
                         enddo
@@ -451,7 +453,7 @@
 
                     close(unit=iunit)
 
-                endif
+
 
             end subroutine read_tsed_file
 
@@ -478,7 +480,7 @@
                 integer, parameter :: iunit = 19, miss_unit = 17,punit = 79
                 real(kind=Prec), parameter :: sed_missing = -150.d0
                 logical, parameter :: maketype2 = .false.
-                integer :: i,j,num_points,missing,status,sed_start
+                integer :: i,j,k,num_points,missing,status,sed_start
                 real(kind=Prec) :: no_data_value,x,y,z
                 real(kind=Prec) :: p_temp(gmax)
 
@@ -509,7 +511,7 @@
                                 print *,"  File = ",fname
                                 stop
                             else
-                                pbbed_temp(i,j,:) = p_temp
+                                pbbed_temp(i,:) = p_temp
                             endif
                         enddo
 
@@ -543,12 +545,13 @@
                                     do j=1,my
                                         read(punit,*) (pbbed_temp((j-1)*mx + i,:),i=1,mx)
                                         do i=1,mx
-                                            do j = 1, gmax
-                                                if (pbbed_temp((j-1)*mx + i,j) == no_data_value) then
+                                            do k = 1, gmax
+                                                if (pbbed_temp((j-1)*mx + i,k) == no_data_value) then
                                                     missing = missing + 1
-                                                    pbbed_temp((j-1)*mx + i,j) = sed_missing
+                                                    pbbed_temp((j-1)*mx + i,k) = sed_missing
                                                 endif
                                             enddo
+                                        enddo
                                     enddo
                             end select
 
@@ -562,7 +565,6 @@
                         endif
                     end select
                     close(unit=iunit)
-                endif
 
             end subroutine read_psed_file
 
@@ -700,8 +702,8 @@
                 ! Input and Output
                 character(len=150), intent(in) :: fname
                 integer, intent(in) :: per_type
-                integer, intent(out) :: mx,my
-                real(kind=8), intent(out) :: xll,yll,xhi,yhi,dx,dy,nclasses
+                integer, intent(out) :: mx,my,mclasses
+                real(kind=8), intent(out) :: xll,yll,xhi,yhi,dx,dy
 
                 ! Local
                 integer, parameter :: iunit = 19
@@ -719,7 +721,7 @@
                 open(unit=iunit, file=fname, status='unknown',form='formatted')
 
 
-                select case(abs(sed_type))
+                select case(abs(per_type))
                     ! ASCII file with 3 columns
                     ! determine data size
                     case(1)
@@ -728,21 +730,21 @@
                         mx = 0
 
                         ! Read in first values, determines xlow and yhi
-                        read(iunit,*) xll,yhi,per
+                        read(iunit,*) xll,yhi
                         sed_size = sed_size + 1
                         mx = mx + 1
 
                         ! Go through first row figuring out mx, continue to count
                         y = yhi
                         do while (yhi == y)
-                            read(iunit,*) x,y,per
+                            read(iunit,*) x,y
                             sed_size = sed_size + 1
                             mx = mx + 1
                         enddo
                         mx = mx - 1
                         ! Continue to count the rest of the lines
                         do
-                            read(iunit,fmt=*,iostat=status) x,y,per
+                            read(iunit,fmt=*,iostat=status) x,y
                             if (status /= 0) exit
                                 sed_size = sed_size + 1
                         enddo
@@ -773,7 +775,7 @@
 
                     case default
                         print *, 'ERROR:  Unrecognized sed_type'
-                        print *, '    sed_type = ',sed_type
+                        print *, '    sed_type = ',per_type
                         print *, '  for sediment file:'
                         print *, '   ', fname
                         stop
@@ -798,6 +800,7 @@
 
                 ! Input
                 character(len=*), intent(in), optional :: file_name
+                integer, parameter :: unit = 19
 
                 open(unit=SED_PARM_UNIT,file='fort.geo',status="unknown",action="write")
 
@@ -824,7 +827,7 @@
                 read(unit,*) lmax
                 read(unit,*) mgc
                 read(unit,*) hcr
-                if (gmax) then
+                if (gmax>0) then
                     allocate(D(gmax))
                     read(unit,*) D(:)
                 endif
@@ -880,17 +883,17 @@
                 write(SED_PARM_UNIT,*) '   Number of sediment layers:',lmax
                 write(SED_PARM_UNIT,*) '   Number of ghost cell:',mgc
                 write(SED_PARM_UNIT,*) '   Water depth consider sediment transport:',hcr
-                if (friction_forcing) then
-                    write(SEO_PARM_UNIT,*) '   Sediment grain size classes:', D(:)
+                if (gmax>0) then
+                    write(SED_PARM_UNIT,*) '   Sediment grain size classes:', D(:)
                 endif
                 write(SED_PARM_UNIT,*) '   gravity:',g
-                write(SEO_PARM_UNIT,*) '   kinematic viscosity:',vis
-                write(SEO_PARM_UNIT,*) '   Water temperature:',Te
-                write(SEO_PARM_UNIT,*) '   Representative wave period:',Trep
-                write(SEO_PARM_UNIT,*) '   Threshold water depth above which cells are considered wet:', eps
-                write(SEO_PARM_UNIT,*) '   von kaman coefficient:',k0
-                write(SEO_PARM_UNIT,*) '   mining coeffcient:',m0
-                write(SEO_PARM_UNIT,*) '   Coefficient determining Ts = tsfac * h/ws in sediment source term:',tsfac
+                write(SED_PARM_UNIT,*) '   kinematic viscosity:',vis
+                write(SED_PARM_UNIT,*) '   Water temperature:',Te
+                write(SED_PARM_UNIT,*) '   Representative wave period:',Trep
+                write(SED_PARM_UNIT,*) '   Threshold water depth above which cells are considered wet:', eps
+                write(SED_PARM_UNIT,*) '   von kaman coefficient:',k0
+                write(SED_PARM_UNIT,*) '   mining coeffcient:',m0
+                write(SED_PARM_UNIT,*) '   Coefficient determining Ts = tsfac * h/ws in sediment source term:',tsfac
                 write(SED_PARM_UNIT,*) '   Minimum adaptation time scale in advection diffusion equation sediment:', Tsmin
                 write(SED_PARM_UNIT,*) '   maximum Shields parameter for ceq Diane Foster:',smax
                 write(SED_PARM_UNIT,*) '   Friction coefficient flow:',cf
@@ -935,7 +938,7 @@
 
                 ! arguments
                 real (kind=Prec), intent(in) :: x1,x2,y1,y2
-                integer, intent(in) :: m
+                integer, intent(in) :: m,mtsedfiles,mpsedfiles
                 real (kind=Prec), intent(out) :: area
 
                 ! local
@@ -943,13 +946,12 @@
                     y1m,y2m, area1,area2,area_m
                 integer :: mfid, indicator, i0
 
-                mfid = mtsedorder(m)
+                mfid = msedorder(m)
                 i0=i0sed(mfid)
                 if ((mtsedfiles /= mpsedfiles)) then
                     write(SED_PARM_UNIT,*) 'Warning:'
                     write(SED_PARM_UNIT,*) '   The number of thickness and grainsize distribution file is not same! '
                     write(SED_PARM_UNIT,*) '   Check your data! '
-                    exit
                 endif
                 if (m == mtsedfiles) then
                     ! innermost step of recursion reaches this point.
@@ -960,7 +962,7 @@
 
                 else
                     ! recursive call to compute area using one fewer topo grids:
-                    call sedarea(x1,x2,y1,y2,m+1,area1)
+                    call sedarea(x1,x2,y1,y2,m+1,area1,mtsedfiles,mpsedfiles)
 
                     ! region of intersection of cell with new topo grid:
                     call intersection(indicator,area_m,x1m,x2m, &
@@ -971,7 +973,7 @@
                     if (area_m > 0) then
 
                         ! correction to subtract out from previous set of topo grids:
-                        call sedarea(x1m,x2m,y1m,y2m,m+1,area2)
+                        call sedarea(x1m,x2m,y1m,y2m,m+1,area2,mtsedfiles,mpsedfiles)
 
                         ! adjust integral due to corrections for new topo grid:
                         area = area1 - area2 + area_m
