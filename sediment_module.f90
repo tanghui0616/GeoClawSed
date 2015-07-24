@@ -82,7 +82,7 @@
         Real(kind=Prec) ::      nuh,nuhfac,gammaWs,a1,hswitch,wetslp,dryslp
         Integer :: sourcesink,struct,morfac,sws,avalanching
         Real(kind=Prec) ::      morstart
-        Real(kind=Prec) ::       vareps,split,merge,beta
+        Real(kind=Prec) ::       vareps,split,merge,beta,toler
         CHARACTER(120)  ::      limit_method,trim,method
         Logical         ::      aval
 
@@ -91,7 +91,7 @@
             subroutine read_sed_settings(file_name)
 
                 use geoclaw_module
-                use amr_module, only: xlower,xupper,xlower,yupper
+                use amr_module, only: xlower,xupper,ylower,yupper
                 use Set_Precision, only: Prec
 
 
@@ -196,7 +196,7 @@
                         write(SED_PARM_UNIT,*) '  minlevel, maxlevel = ', &
                                 minlevelsed(i), maxlevelsed(i)
                         write(SED_PARM_UNIT,*) '  tlow, thi = ', tlowsed(i),thised(i)
-                        call read_sed_header(sedpfname(i),ipsedtype(i),mxsed(i), &
+                        call read_per_header(sedpfname(i),ipsedtype(i),mxsed(i), &
                                 mysed(i),xlowsed(i),ylowsed(i),xhised(i),yhised(i), &
                                 dxsed(i),dysed(i))
                     enddo
@@ -691,7 +691,7 @@
     !   - dx,dy - (float) Spatial resolution of grid
     ! ========================================================================
 
-            subroutine read_sed_header(fname,per_type,mx,my,xll,yll,xhi,yhi,dx,dy,mclasses)
+            subroutine read_per_header(fname,per_type,mx,my,xll,yll,xhi,yhi,dx,dy,mclasses)
 
                 use geoclaw_module
 
@@ -785,7 +785,7 @@
                 write(GEO_PARM_UNIT,*) '  my = ',my,'  y = (',yll,',',yhi,')'
                 write(GEO_PARM_UNIT,*) '  dx, dy (meters/degrees) = ', dx,dy
 
-            end subroutine read_sed_header
+            end subroutine read_per_header
 
             ! ========================================================================
             !  set_geo(fname)
@@ -874,12 +874,12 @@
                 write(SED_PARM_UNIT,*) '   Porosity:',por
                 write(SED_PARM_UNIT,*) '   Maximum allowed sediment concentration:',cmax
                 write(SED_PARM_UNIT,*) '   Control sediment diffusion coefficient:',facDc
-                write(SED_PARM_UNIT,*) '   Sediment thickness for each layer:' thick
-                write(SED_PARM_UNIT,*) '   Initial active sediment layer:' nd_var
-                write(SED_PARM_UNIT,*) '   Number of Grain size classes:'gmax
-                write(SED_PARM_UNIT,*) '   Number of sediment layers:'lmax
-                write(SED_PARM_UNIT,*) '   Number of ghost cell:'mgc
-                write(SED_PARM_UNIT,*) '   Water depth consider sediment transport:'hcr
+                write(SED_PARM_UNIT,*) '   Sediment thickness for each layer:', thick
+                write(SED_PARM_UNIT,*) '   Initial active sediment layer:', nd_var
+                write(SED_PARM_UNIT,*) '   Number of Grain size classes:',gmax
+                write(SED_PARM_UNIT,*) '   Number of sediment layers:',lmax
+                write(SED_PARM_UNIT,*) '   Number of ghost cell:',mgc
+                write(SED_PARM_UNIT,*) '   Water depth consider sediment transport:',hcr
                 if (friction_forcing) then
                     write(SEO_PARM_UNIT,*) '   Sediment grain size classes:', D(:)
                 endif
