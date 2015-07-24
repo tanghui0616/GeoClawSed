@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
     
-    """GeoClaw Sediments Grainsize distribution Tools Module
+"""GeoClaw Sediments Grainsize distribution Tools Module
         
         Module provides several functions for reading, writing and ploting
         sediments grainsize distribution files.
@@ -17,7 +17,7 @@
         :Percentage Class:
         
         
-    """
+"""
 import os
 import urllib
 import types
@@ -37,27 +37,27 @@ def per1writer (outfile,perc,xlower,xupper,ylower,yupper,nxpoints,nypoints,nclas
         (x,y,z) values on each line, progressing from upper left corner across
         rows, then down.
         """
-    percentage = Percentage(Per_func=perc)
+    percentage = Percentage(per_func=perc)
     percentage.x = numpy.linspace(xlower,xupper,nxpoints)
     percentage.y = numpy.linspace(ylower,yupper,nypoints)
     percentage.NC = nclasses
-    percentage.write(outfile, Per_type=1)
+    percentage.write(outfile, per_type=1)
 
 def per2writer (outfile,perc,xlower,xupper,ylower,yupper,nxpoints,nypoints,nclasses):
 
-    percentage = Percentage(Per_func=perc)
+    percentage = Percentage(per_func=perc)
     percentage.x = numpy.linspace(xlower,xupper,nxpoints)
     percentage.y = numpy.linspace(ylower,yupper,nypoints)
     percentage.NC = nclasses
-    percentage.write(outfile, Per_type=2)
+    percentage.write(outfile, per_type=2)
 
 def per3writer (outfile,perc,xlower,xupper,ylower,yupper,nxpoints,nypoints,nclasses):
     
-    percentage = Percentage(Per_func=perc)
+    percentage = Percentage(per_func=perc)
     percentage.x = numpy.linspace(xlower,xupper,nxpoints)
     percentage.y = numpy.linspace(ylower,yupper,nypoints)
     percentage.NC = nclasses
-    percentage.write(outfile, Per_type=3)
+    percentage.write(outfile, per_type=3)
 
 # ==============================================================================
 #  Percentage class
@@ -99,6 +99,7 @@ class Percentage(object):
         r"""A representation of the data as a 2d array."""
         if self._Per is None:
             self.generate_2d_percentage(mask=True)
+        #print self._Per
         return self._Per
     @Per.setter
     def Per(self, value):
@@ -165,7 +166,7 @@ class Percentage(object):
     def NC(self,value):
         self._NC = value
     @NC.deleter
-    def NC(self)
+    def NC(self):
         del self._NC
 
     @property
@@ -218,7 +219,7 @@ class Percentage(object):
         
         """
     
-        super(Sediment, self).__init__()
+        super(Percentage, self).__init__()
     
         self.path = path
         self.per_func = per_func
@@ -236,8 +237,7 @@ class Percentage(object):
         self._NC = None
         self._extent = None
         self._delta = None
-
-       self.coordinate_transform = lambda x,y: (x,y)
+        self.coordinate_transform = lambda x,y:(x,y)
 
     def generate_2d_percentage(self, mask=True):
         """Generate a 2d array of the sediment grainsize distribution."""
@@ -270,6 +270,7 @@ class Percentage(object):
         elif self.per_func is not None:
             # Generate sediment thickness profile via sed_func
             self._Per = self.per_func(self.X, self.Y)
+                #print self._Per
 
     def generate_2d_coordinates(self, mask=True):
         """Generate 2d coordinate arrays."""
@@ -329,7 +330,7 @@ class Percentage(object):
 
     def read(self, path=None, per_type=None, unstructured=False,
              mask=True, filter_region=None, force=False):
-            """Read in the data from the object's *path* attribute.
+        r"""Read in the data from the object's *path* attribute.
         
             Stores the resulting data in one of the sets of *x*, *y*, and *per* or
             *X*, *Y*, and *Per*.
@@ -342,10 +343,10 @@ class Percentage(object):
             - *filter_region* (tuple)
             The first three might have already been set when instatiating object.
         
-            """
+        """
     
-        if (path is None) and (self.path is None):
-                raise ValueError("*** Need to set path for file to read")
+        if ((path is None) and (self.path is None)):
+            raise ValueError("*** Need to set path for file to read")
     
         if path:
             self.path = path   # set or perhaps reset
@@ -420,7 +421,7 @@ class Percentage(object):
 
 
     def read_header(self):
-    r"""Read in header of sediment file at path.
+        r"""Read in header of sediment file at path.
         
         If a value returns numpy.nan then the value was not retrievable.  Note
         that this routine can read in headers whose values and labels are
@@ -492,11 +493,10 @@ class Percentage(object):
     
         # Check to see if masks have been applied to sediment, if so use them
         # if masked is True
-        if isinstance(self.Z, numpy.ma.MaskedArray) and masked:
+        if isinstance(self.Per, numpy.ma.MaskedArray) and masked:
             pass
         else:
             pass
-    
         with open(path, 'w') as outfile:
             if self.unstructured:
                 for (i, per) in enumerate(self.per):
@@ -506,13 +506,17 @@ class Percentage(object):
                 for j in range(len(self.y)-1, -1, -1):
                     latitude = self.y[j]
                     for (i, longitude) in enumerate(self.x):
-                        outfile.write("%s %s %s\n" % (longitude, latitude, self.per[j,i,:]))
+                        outfile.write("%s %s " %(longitude, latitude))
+                        for k in xrange(self.NC):
+                            outfile.write("%22.15e" %self._Per[i,j,k])
+                        outfile.write("\n")
+
         
             elif per_type == 2 or per_type == 3:
                 # Write out header
                 outfile.write('%6i                              ncols\n' % self.Per.shape[1])
                 outfile.write('%6i                              nrows\n' % self.Per.shape[0])
-                outfile.write('%6i                              nclasses\n' % self.Per.shape[3])
+                outfile.write('%6i                              nclasses\n' % self.Per.shape[2])
                 outfile.write('%22.15e              xlower\n' % self.extent[0])
                 outfile.write('%22.15e              ylower\n' % self.extent[2])
                 outfile.write('%22.15e              cellsize\n' % self.delta)
@@ -528,7 +532,9 @@ class Percentage(object):
                         Per_filled = numpy.flipud(self.Per)
                     for i in xrange(self.Per.shape[0]):
                         for j in xrange(self.Per.shape[1]):
-                            outfile.write("%22.15e\n" % Per_filled[i,j,:])
+                            for k in xrange(self.NC):
+                                outfile.write("%22.15e" % Per_filled[i,j,k])
+                            outfile.write("\n")
                     if masked_Per:
                         del Per_filled
                 elif per_type == 3:
@@ -538,8 +544,9 @@ class Percentage(object):
                         Per_flipped = numpy.flipud(self.Per)
                     for i in xrange(self.Per.shape[0]):
                         for j in xrange(self.Per.shape[1]):
-                            outfile.write("%22.15e   " % (Per_flipped[i,j]))
-                            outfile.write("\n")
+                            for k in xrange(self.NC):
+                                outfile.write("%d   " % (Per_flipped[i,j,k]))
+                                outfile.write("\n")
                     if masked_Per:
                         del Per_flipped
         
