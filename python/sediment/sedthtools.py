@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-    """GeoClaw Sediments thickness Tools Module
+"""GeoClaw Sediments thickness Tools Module
     
     Module provides several functions for reading, writing and ploting
     sediments thickness (deposit) files.
@@ -16,7 +16,7 @@
     :Sediments Class:
     
 
-    """
+"""
 import os
 import urllib
 import types
@@ -38,7 +38,7 @@ def sed1writer (outfile,thick,xlower,xupper,ylower,yupper,nxpoints,nypoints):
     (x,y,z) values on each line, progressing from upper left corner across
     rows, then down.
     """
-    sediment = Sediment(Sed_func=thick)
+    sediment = Sediment(sed_func=thick)
     sediment.x = numpy.linspace(xlower,xupper,nxpoints)
     sediment.y = numpy.linspace(ylower,yupper,nypoints)
     sediment.write(outfile, sed_type=1)
@@ -350,7 +350,7 @@ class Sediment(object):
         
         if self.sed_type is None:
             if sed_type is not None:
-            self.sed_type = sed_type
+                self.sed_type = sed_type
             else:
                 # Try to look at suffix for type
                 extension = os.path.splitext(self.path)[1][1:]
@@ -488,7 +488,7 @@ class Sediment(object):
     
         # Check to see if masks have been applied to sediment, if so use them
         # if masked is True
-        if isinstance(self.Z, numpy.ma.MaskedArray) and masked:
+        if isinstance(self.Th, numpy.ma.MaskedArray) and masked:
             pass
         else:
             pass
