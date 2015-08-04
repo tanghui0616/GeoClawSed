@@ -55,6 +55,7 @@
         real(kind=Prec), allocatable :: totalthick(:,:),pbbed(:,:,:,:)
         integer, allocatable :: totalnum(:,:)
         real(kind=Prec), allocatable :: dzbed(:,:,:),totalthick_temp(:),pbbed_temp(:,:)
+        real(kind=Prec), allocatable :: z0bed(:,:),zb(:,:),dzbdt(:,:),sedero(:,:)
         integer, allocatable :: i0sed(:), msed(:), msedorder(:)
         integer, allocatable :: minlevelsed(:), maxlevelsed(:), itsedtype(:),ipsedtype(:)
         integer, allocatable :: sedID(:),sed0save(:)
@@ -75,7 +76,8 @@
         ! ========================================================================
         !  Constants and parameter
         ! ========================================================================
-        Real(kind=Prec) ::      rhos,rho,por,cmax,facDc,hcr,thick,nd_var
+        Real(kind=Prec) ::      rhos,rho,por,cmax,facDc,hcr,thick
+        integer :: nd_var
         Integer :: gmax,lmax,mgc
         Real(kind=Prec), dimension(:),allocatable :: D
         Real(kind=Prec) ::      g,vis,Te,Trep,eps,k0,k1,m0,tsfac,Tsmin,smax,cf
